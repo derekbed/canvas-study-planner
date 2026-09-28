@@ -30,6 +30,7 @@ export default function CoursewiseApp() {
   const [connectDialog, setConnectDialog] = useState(false);
   const [reminderDialog, setReminderDialog] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [feedUrl, setFeedUrl] = useState("");
   const notified = useRef(new Set<string>());
 
   const reload = useCallback(async () => {
@@ -64,6 +65,16 @@ export default function CoursewiseApp() {
     if (!response.ok) throw new Error(result.error || "Canvas could not sync.");
     setData(result);
   }, "Canvas is up to date.");
+  const importFeed = () => run(async () => {
+    const response = await fetch("/api/calendar/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feedUrl }) });
+    const result = await response.json() as Workspace & { error?: string; imported?: number };
+    if (!response.ok) throw new Error(result.error || "Calendar feed could not import.");
+    setData(result);
+    setFeedUrl("");
+    setConnectDialog(false);
+    setActiveTab("calendar");
+    toast.success(`Imported ${result.imported || 0} Canvas calendar items.`);
+  });
   const selectedEvent: Event | undefined = data?.events.find(e => e.id === selectedEventId);
   const reminders = useMemo(() => {
     if (!data) return [];
@@ -130,7 +141,7 @@ export default function CoursewiseApp() {
 
     <Dialog open={courseDialog} onOpenChange={setCourseDialog}><DialogContent><DialogHeader><DialogTitle>Add a course</DialogTitle><DialogDescription>Keep courses here even when they are not in Canvas.</DialogDescription></DialogHeader><form className="form-stack" onSubmit={event => { event.preventDefault(); const form = new FormData(event.currentTarget); run(() => mutate("course:create", { name: form.get("name"), code: form.get("code"), color: form.get("color") }), "Course added."); setCourseDialog(false); }}><label>Course name<input name="name" required placeholder="e.g. Chemistry" /></label><label>Course code<input name="code" placeholder="e.g. CHEM 101" /></label><label>Color<NativeSelect name="color" defaultValue="blue"><NativeSelectOption value="blue">Blue</NativeSelectOption><NativeSelectOption value="violet">Purple</NativeSelectOption><NativeSelectOption value="orange">Orange</NativeSelectOption><NativeSelectOption value="teal">Teal</NativeSelectOption><NativeSelectOption value="rose">Rose</NativeSelectOption></NativeSelect></label><Button type="submit"><Plus size={16} /> Add course</Button></form></DialogContent></Dialog>
     <Dialog open={eventDialog} onOpenChange={setEventDialog}><DialogContent><DialogHeader><DialogTitle>Add a date</DialogTitle><DialogDescription>Add an assignment, test, or personal course reminder.</DialogDescription></DialogHeader><form className="form-stack" onSubmit={event => { event.preventDefault(); const form = new FormData(event.currentTarget); run(() => mutate("event:create", { title: form.get("title"), courseId: form.get("courseId"), dueAt: form.get("dueAt"), kind: form.get("kind"), pointsPossible: form.get("pointsPossible"), estimatedMinutes: form.get("estimatedMinutes"), description: form.get("description") }), "Date added."); setEventDialog(false); }}><label>Title<input name="title" required placeholder="e.g. Lab report" /></label><label>Course<NativeSelect name="courseId"><NativeSelectOption value="">Personal</NativeSelectOption>{data?.courses.map(c => <NativeSelectOption key={c.id} value={c.id}>{c.name}</NativeSelectOption>)}</NativeSelect></label><div className="form-row"><label>Due date and time<input type="datetime-local" name="dueAt" required /></label><label>Type<NativeSelect name="kind"><NativeSelectOption value="assignment">Assignment</NativeSelectOption><NativeSelectOption value="quiz">Quiz</NativeSelectOption><NativeSelectOption value="exam">Exam</NativeSelectOption><NativeSelectOption value="event">Event</NativeSelectOption></NativeSelect></label></div><div className="form-row"><label>Points possible<input type="number" name="pointsPossible" min="0" /></label><label>Estimated minutes<input type="number" name="estimatedMinutes" min="15" max="600" defaultValue={60} /></label></div><label>Details<textarea name="description" rows={3} placeholder="Instructions or topics to cover" /></label><Button type="submit"><Plus size={16} /> Add date</Button></form></DialogContent></Dialog>
-    <Dialog open={connectDialog} onOpenChange={setConnectDialog}><DialogContent><DialogHeader><DialogTitle>Connect your school’s Canvas</DialogTitle><DialogDescription>The Canvas connection needs a developer key from your school before sign-in can work. You can use the planner with manual courses and dates now.</DialogDescription></DialogHeader><Button onClick={() => { setConnectDialog(false); setCourseDialog(true); }}>Add a course manually</Button></DialogContent></Dialog>
+    <Dialog open={connectDialog} onOpenChange={setConnectDialog}><DialogContent><DialogHeader><DialogTitle>Connect your Canvas calendar</DialogTitle><DialogDescription>Your school blocks personal access tokens, so start with the Canvas calendar feed. It brings real due dates into Coursewise while full Canvas sign-in waits on school approval.</DialogDescription></DialogHeader><form className="form-stack" onSubmit={event => { event.preventDefault(); importFeed(); }}><label>Canvas calendar feed<input value={feedUrl} onChange={event => setFeedUrl(event.target.value)} placeholder="https://canvas.school.edu/feeds/calendars/..." /></label><Button type="submit" disabled={busy || !feedUrl.trim()}><RefreshCw size={16} /> Import calendar</Button></form><Button variant="outline" onClick={() => { setConnectDialog(false); setCourseDialog(true); }}>Add a course manually</Button></DialogContent></Dialog>
     <Dialog open={reminderDialog} onOpenChange={setReminderDialog}><DialogContent><DialogHeader><DialogTitle>Reminders</DialogTitle><DialogDescription>Work due within the next {data?.settings?.reminder_hours || 24} hours.</DialogDescription></DialogHeader><div className="reminder-list">{reminders.length ? reminders.map(e => <button key={e.id} onClick={() => { setReminderDialog(false); setSelectedEventId(e.id); }}><span>{e.title}</span><small>{dateTime(e.due_at)}</small></button>) : <p>You are clear for now.</p>}</div><p className="dialog-note">Reminders appear in this workspace while you are using the site.</p></DialogContent></Dialog>
   </main>;
 }
