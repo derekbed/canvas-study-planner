@@ -16,14 +16,30 @@ export async function POST(request: Request) {
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return jsonError("Invalid request."); }
   const feedUrl = cleanFeedUrl(body.feedUrl);
-  if (!feedUrl) return jsonError("Paste a valid Canvas calendar feed link ending in .ics.");
+  const icsText = typeof body.icsText === "string" ? body.icsText : null;
+  if ((!feedUrl && !icsText) || (icsText && icsText.length > 5_000_000)) {
+    return jsonError("Paste a valid Canvas calendar feed link or choose an .ics file under 5 MB.");
+  }
 
   try {
-    const response = await fetch(feedUrl, { headers: { Accept: "text/calendar,text/plain,*/*" } });
-    if (!response.ok) return jsonError(`Canvas returned ${response.status}. Check that the feed link is current.`, 502);
-    const contentType = response.headers.get("content-type") || "";
-    const text = await response.text();
-    if (!contentType.includes("calendar") && !text.includes("BEGIN:VCALENDAR")) return jsonError("That link did not return a calendar feed.");
+    let text = icsText;
+    if (feedUrl) {
+      const response = await fetch(feedUrl, {
+        headers: {
+          Accept: "text/calendar,text/plain,*/*",
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+        },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (response.status === 401 || response.status === 403) {
+        return jsonError("Canvas denied the feed request. If this link opens in your browser, download the .ics file and upload it here; otherwise copy a fresh Calendar Feed link from Canvas.", 403);
+      }
+      if (!response.ok) return jsonError(`Canvas returned ${response.status}. Check that the feed link is current.`, 502);
+      const contentType = response.headers.get("content-type") || "";
+      text = await response.text();
+      if (!contentType.includes("calendar") && !text.includes("BEGIN:VCALENDAR")) return jsonError("That link did not return a calendar feed.");
+    }
+    if (!text || !text.includes("BEGIN:VCALENDAR")) return jsonError("That file is not a valid .ics calendar feed.");
 
     const entries = parseIcsCalendar(text).slice(0, 500);
     if (!entries.length) return jsonError("No calendar events were found in that feed.");
