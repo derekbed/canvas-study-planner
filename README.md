@@ -4,6 +4,8 @@ Coursewise is a Canvas-connected study planner for high school and college stude
 
 The application lives in [site](./site).
 
+The private preview's release checks are in the [student launch plan](./site/PUBLIC_LAUNCH_PLAN.md) and [ten-point legal checklist audit](./site/LEGAL_CHECKLIST_AUDIT.md).
+
 The local Chrome prototype lives in [extension](./extension). On Canvas, its organizer separates assignments, exams and quizzes, and announcements while showing course grades and next deadlines. It uses the signed-in student's Canvas session for read-only summaries; the Coursewise side panel sends page context to the local backend only when the student submits a question. See the extension README for setup and limitations.
 
 ## What works now
@@ -40,7 +42,7 @@ Set `OPENAI_API_KEY` to activate study chat and generated materials. `OPENAI_MOD
 
 ## Before a public student launch
 
-This first deployment is an owner-private product preview. A public release needs student sign-in suitable for high school and college users, consent and data retention choices, institution onboarding, operational reminder delivery when the browser is closed, and review of textbook upload and AI data handling. Grade estimates depend on the work and grading rules available from Canvas; the UI identifies missing inputs.
+This deployment remains an owner-private product preview. The website now gates production workspace APIs on a 13+ confirmation, and the extension requires an initial Canvas data disclosure. A public release still needs verified student identity and guardian/school processes, a named operator and support contact, concrete provider retention terms, institution onboarding, full accessibility testing, and review of textbook upload and AI data handling. Grade estimates depend on the work and grading rules available from Canvas; the UI identifies missing inputs. See the [student launch plan](./site/PUBLIC_LAUNCH_PLAN.md) for the remaining release gates.
 
 ## Expanded study workspace
 

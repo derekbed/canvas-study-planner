@@ -32,7 +32,7 @@ function renderPair(message = "") {
   $("finish").hidden = !pairCode;
   $("signout").hidden = !paired;
 }
-async function forgetToken() { if (expiryTimer) clearTimeout(expiryTimer); expiryTimer = null; token = null; expiresAt = 0; await chrome.storage.local.remove(["extensionToken", "expiresAt"]); renderPair("Session expired or signed out. Pair again."); }
+async function forgetToken() { if (expiryTimer) clearTimeout(expiryTimer); expiryTimer = null; token = null; expiresAt = 0; await chrome.storage.session.remove(["extensionToken", "expiresAt"]); renderPair("Session expired or signed out. Pair again."); }
 function scheduleExpiry() {
   if (expiryTimer) clearTimeout(expiryTimer);
   if (token) expiryTimer = setTimeout(forgetToken, Math.max(0, expiresAt - Date.now()));
@@ -58,6 +58,14 @@ async function refresh() {
   finally { $("refresh").disabled = false; }
 }
 $("refresh").addEventListener("click", refresh);
+$("data-consent").addEventListener("change", event => { $("continue").disabled = !event.target.checked; });
+$("continue").addEventListener("click", async () => {
+  if (!$("data-consent").checked) return;
+  await chrome.storage.local.set({ cwDataConsent: true });
+  $("disclosure").hidden = true;
+  $("extension-content").hidden = false;
+  await refresh();
+});
 $("clear").addEventListener("click", () => { context = null; capturedTab = null; stale = false; renderContext("Captured context cleared. Your question is still here."); });
 $("pair").addEventListener("click", async () => {
   $("pair").disabled = true;
@@ -74,7 +82,7 @@ $("finish").addEventListener("click", async () => {
   try {
     const data = await api("/api/extension/pair/complete", { code: pairCode });
     token = data.token; expiresAt = data.expiresAt; pairCode = null;
-    await chrome.storage.local.set({ extensionToken: token, expiresAt });
+    await chrome.storage.session.set({ extensionToken: token, expiresAt });
     scheduleExpiry();
     renderPair("Paired. You can ask Coursewise now.");
   } catch (error) { if (error.status === 403) pairCode = null; renderPair(error.message); }
@@ -117,7 +125,11 @@ $("ask-form").addEventListener("submit", async event => {
 chrome.tabs.onActivated.addListener(() => { if (context) { stale = true; renderContext(); } });
 chrome.tabs.onUpdated.addListener((tabId, change) => { if (context && capturedTab?.id === tabId && (change.url || change.status === "loading")) { stale = true; renderContext(); } });
 (async () => {
-  const saved = await chrome.storage.local.get(["extensionToken", "expiresAt"]);
+  const consent = await chrome.storage.local.get("cwDataConsent");
+  if (consent.cwDataConsent !== true) { $("disclosure").hidden = false; $("extension-content").hidden = true; return; }
+  $("disclosure").hidden = true;
+  $("extension-content").hidden = false;
+  const saved = await chrome.storage.session.get(["extensionToken", "expiresAt"]);
   token = saved.extensionToken || null; expiresAt = saved.expiresAt || 0;
   if (token && expiresAt <= Date.now()) await forgetToken(); else { renderPair(); scheduleExpiry(); }
   await refresh();

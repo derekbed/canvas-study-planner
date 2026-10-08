@@ -1,12 +1,13 @@
-import { database, jsonError } from "@/lib/server";
-import { hashSecret, localOnly } from "@/lib/extension";
+import { database, jsonError, userId } from "@/lib/server";
+import { hashSecret, extensionSiteAllowed } from "@/lib/extension";
 export async function POST(request: Request) {
-  if (!localOnly(request)) return jsonError("Local pairing is unavailable.", 403);
+  if (!extensionSiteAllowed(request)) return jsonError("Pairing is unavailable.", 403);
   const origin = request.headers.get("origin");
   if (origin !== new URL(request.url).origin) return jsonError("Open the pairing page in Coursewise.", 403);
-  // The local Sites middleware sets this header only for an existing sign-in cookie.
-  const user = request.headers.get("oai-authenticated-user-id");
-  if (!user) return jsonError("Sign in to Coursewise before pairing.", 401);
+  // Pairing always requires the Sites-authenticated browser session, even in local preview.
+  if (!request.headers.get("oai-authenticated-user-id")) return jsonError("Sign in to Coursewise before pairing.", 401);
+  const user = await userId(request);
+  if (!user) return jsonError("Sign in and confirm age eligibility in Coursewise before pairing.", 401);
   let body: { code?: unknown };
   try { body = await request.json(); } catch { return jsonError("Invalid pairing request."); }
   if (typeof body.code !== "string" || !/^[a-f0-9]{48}$/.test(body.code)) return jsonError("Invalid pairing code.");

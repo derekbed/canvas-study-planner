@@ -42,7 +42,7 @@ export async function extraAction(user:string, action:string, body:Record<string
     for(const file of files)if(file.r2_key)await bucket().delete(file.r2_key);
     const statements=["materials","events","study_blocks","flashcards","focus_sessions","grade_history","chat_messages","chat_conversations","material_vectors","course_passages","course_knowledge"].map(table=>db.prepare(`DELETE FROM ${table} WHERE user_id=? AND (?='' OR course_id=?)`).bind(user,selected,selected));
     statements.push(db.prepare("DELETE FROM courses WHERE user_id=? AND (?='' OR id=?)").bind(user,selected,selected));
-    if(!selected) for(const table of ["settings","calendar_imports","canvas_connections"])statements.push(db.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(user));
+    if(!selected) for(const table of ["settings","calendar_imports","canvas_connections","extension_sessions","extension_pairings"])statements.push(db.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(user));
     if(!selected)statements.push(db.prepare("INSERT INTO preferences (user_id,value) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET value=excluded.value").bind(user,'{"initialized":true}'));
     else statements.push(db.prepare("INSERT OR IGNORE INTO preferences (user_id,value) VALUES (?,?)").bind(user,'{"initialized":true}'));
     await db.batch(statements);

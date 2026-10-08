@@ -1,7 +1,7 @@
 import { database, jsonError, userId, workspace } from "@/lib/server";
 import { exportCalendar } from "@/lib/ics";
 export async function GET(request:Request) {
-  const user=userId(request);if(!user)return jsonError("Sign in to export your data.",401);
+  const user=await userId(request);if(!user)return jsonError("Sign in to export your data.",401);
   try{
     const data=await workspace(user),calendar=new URL(request.url).searchParams.get("format")==="ics";
     if(calendar)return new Response(exportCalendar(data.events),{headers:{"Content-Type":"text/calendar; charset=utf-8","Content-Disposition":'attachment; filename="coursewise.ics"',"Cache-Control":"no-store"}});

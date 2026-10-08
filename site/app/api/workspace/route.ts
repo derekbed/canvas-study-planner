@@ -2,13 +2,13 @@ import { extraAction } from "@/lib/workspace-actions";
 import { database, jsonError, cleanText, numberIn, now, userId, workspace } from "@/lib/server";
 
 export async function GET(request: Request) {
-  const user = userId(request); if (!user) return jsonError("Sign in to view your workspace.", 401);
+  const user = await userId(request); if (!user) return jsonError("Sign in to view your workspace.", 401);
   try { return Response.json(await workspace(user)); }
   catch (error) { console.error("Workspace load failed", error); return jsonError("Your workspace could not load. Please try again.", 503); }
 }
 
 export async function POST(request: Request) {
-  const user = userId(request); if (!user) return jsonError("Sign in to save changes.", 401);
+  const user = await userId(request); if (!user) return jsonError("Sign in to save changes.", 401);
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return jsonError("Invalid request."); }
   const action = cleanText(body.action, 40);

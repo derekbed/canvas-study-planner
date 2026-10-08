@@ -2,7 +2,7 @@ import { bucket, database, jsonError, userId } from "@/lib/server";
 import { forgetMaterialKnowledge } from "@/lib/course-knowledge";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
-  const user = userId(request); if (!user) return jsonError("Sign in first.", 401);
+  const user = await userId(request); if (!user) return jsonError("Sign in first.", 401);
   const { id } = await context.params;
   const row = await database().prepare("SELECT name,mime_type,r2_key FROM materials WHERE id=? AND user_id=?").bind(id, user).first<{ name: string; mime_type: string; r2_key: string }>();
   if (!row?.r2_key) return jsonError("File not found.", 404);
@@ -12,7 +12,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const user = userId(request); if (!user) return jsonError("Sign in first.", 401);
+  const user = await userId(request); if (!user) return jsonError("Sign in first.", 401);
   const { id } = await context.params;
   const row = await database().prepare("SELECT r2_key,course_id FROM materials WHERE id=? AND user_id=?").bind(id, user).first<{ r2_key: string; course_id: string }>();
   if (!row) return jsonError("File not found.", 404);

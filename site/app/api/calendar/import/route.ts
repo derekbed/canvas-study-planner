@@ -8,7 +8,7 @@ function cleanFeedUrl(value: unknown) {
   } catch { return null; }
 }
 export async function POST(request:Request) {
-  const user=userId(request); if(!user) return jsonError("Sign in to import a calendar.",401);
+  const user=await userId(request); if(!user) return jsonError("Sign in to import a calendar.",401);
   let body:Record<string,unknown>;try{body=await request.json();}catch{return jsonError("Invalid request.");}
   const feedUrl=cleanFeedUrl(body.feedUrl);
   let text=typeof body.icsText==="string"?body.icsText:null;

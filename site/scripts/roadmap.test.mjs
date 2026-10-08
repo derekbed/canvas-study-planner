@@ -9,7 +9,7 @@ const require=createRequire(import.meta.url),ts=require('typescript');
 const root=path.resolve(import.meta.dirname,'..');
 const sql=new DatabaseSync(':memory:');
 for(const file of fs.readdirSync(path.join(root,'drizzle')).filter(f=>f.endsWith('.sql')).sort())sql.exec(fs.readFileSync(path.join(root,'drizzle',file),'utf8'));
-const db={prepare(query){let args=[];return{bind(...values){args=values;return this;},async first(){return sql.prepare(query).get(...args)||null;},async all(){return{results:sql.prepare(query).all(...args)};},async run(){return sql.prepare(query).run(...args);}};},async batch(statements){sql.exec('BEGIN');try{const values=[];for(const statement of statements)values.push(await statement.run());sql.exec('COMMIT');return values;}catch(e){sql.exec('ROLLBACK');throw e;}}};
+const db={prepare(query){let args=[];return{bind(...values){args=values;return this;},async first(){return sql.prepare(query).get(...args)||null;},async all(){return{results:sql.prepare(query).all(...args)};},async run(){const result=sql.prepare(query).run(...args);return{meta:{changes:result.changes,last_row_id:result.lastInsertRowid}};}};},async batch(statements){sql.exec('BEGIN');try{const values=[];for(const statement of statements)values.push(await statement.run());sql.exec('COMMIT');return values;}catch(e){sql.exec('ROLLBACK');throw e;}}};
 const objects=new Map(),env={DB:db,BUCKET:{async delete(key){objects.delete(key);},async get(key){return objects.get(key)||null;},async put(key,value){objects.set(key,value);}}};
 const modules=new Map();
 function load(filename){filename=path.resolve(root,filename);if(!path.extname(filename))filename+='.ts';if(modules.has(filename))return modules.get(filename).exports;const module={exports:{}};modules.set(filename,module);const code=ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;new vm.Script(`(function(require,module,exports){${code}\n})`,{filename}).runInThisContext()((name)=>name==='cloudflare:workers'?{env}:name.startsWith('@/')?load(name.slice(2)):name.startsWith('.')?load(path.resolve(path.dirname(filename),name)):require(name),module,module.exports);return module.exports;}
@@ -60,7 +60,15 @@ test('saved reviews, focus sessions, preferences and deletion are account-scoped
  await mutate('focus:save',{id:'one-session',minutes:25});data=await mutate('focus:save',{id:'one-session',minutes:25});assert.equal(data.focusSessions.length,1);
  data=await mutate('preferences:update',{browserAlerts:true,consent:true,startHour:16,endHour:20});assert.equal(data.preferences.consent,true);
  const bad=await api.POST(req({action:'preferences:update',startHour:21,endHour:20}));assert.equal(bad.status,400);
+ sql.prepare('INSERT INTO extension_sessions(token_hash,user_id,expires_at) VALUES (?,?,?)').run('student-a-session','student-a',Date.now()+60_000);
+ sql.prepare('INSERT INTO extension_pairings(code_hash,user_id,expires_at) VALUES (?,?,?)').run('student-a-pairing','student-a',Date.now()+60_000);
+ sql.prepare('INSERT INTO materials(id,user_id,course_id,name,r2_key,created_at) VALUES (?,?,?,?,?,?)').run('student-a-file','student-a','course','Notes.txt','student-a/object','2026-10-01');
+ objects.set('student-a/object',{body:'private file'});
  await mutate('workspace:delete',{confirm:'DELETE'});data=await(await api.GET(new Request('https://test.example/api/workspace',{headers:{'oai-authenticated-user-id':'student-a'}}))).json();assert.equal(data.courses.length,0);assert.equal(data.cards.length,0);assert.equal(data.focusSessions.length,0);assert.equal(data.preferences.consent,undefined);
+ assert.equal(sql.prepare("SELECT count(*) AS n FROM extension_sessions WHERE user_id='student-a'").get().n,0);
+ assert.equal(sql.prepare("SELECT count(*) AS n FROM extension_pairings WHERE user_id='student-a'").get().n,0);
+ assert.equal(sql.prepare("SELECT count(*) AS n FROM materials WHERE user_id='student-a'").get().n,0);
+ assert.equal(objects.has('student-a/object'),false);
  assert.ok(sql.prepare("SELECT count(*) AS n FROM events WHERE user_id='student-b'").get().n>0);
 });
 test('material retrieval and extraction retain actual page labels',()=>{
@@ -75,11 +83,23 @@ test('course deletion does not reseed samples, and student score edits persist',
  data=await mutate('event:details',{id:event.id,courseId:course.id,estimatedMinutes:75,gradeGroup:'Exams',pointsPossible:100,pointsEarned:88},'student-c');assert.equal(data.events[0].points_earned,88);
  data=await mutate('course:delete',{id:course.id,confirm:'DELETE'},'student-c');assert.equal(data.courses.length,0);assert.equal(data.events.length,0);
 });
+test('a failed object deletion does not claim workspace removal',async()=>{
+ const user='delete-failure',key='delete-failure/file';
+ sql.prepare('INSERT INTO materials(id,user_id,course_id,name,r2_key,created_at) VALUES (?,?,?,?,?,?)').run('file',user,'course','Notes.txt',key,'2026-10-01');
+ objects.set(key,{body:'private file'});
+ const originalDelete=env.BUCKET.delete;
+ env.BUCKET.delete=async()=>{throw new Error('Storage unavailable');};
+ try{const response=await api.POST(req({action:'workspace:delete',confirm:'DELETE'},user));assert.equal(response.status,503);assert.equal(sql.prepare('SELECT count(*) n FROM materials WHERE user_id=?').get(user).n,1);}
+ finally{env.BUCKET.delete=originalDelete;}
+ await mutate('workspace:delete',{confirm:'DELETE'},user);
+ assert.equal(objects.has(key),false);
+});
 test('material access and AI consent are checked before private excerpts leave the account',async()=>{
  const materialApi=load('app/api/materials/[id]/route.ts'),analyze=load('app/api/materials/[id]/analyze/route.ts'),study=load('app/api/study/route.ts');
  sql.prepare("INSERT INTO materials (id,user_id,course_id,name,kind,mime_type,r2_key,extracted_text,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run('private-file','owner','course','Private.pdf','notes','application/pdf','private-key','Private content','2026-10-01');
  const request=new Request('https://test.example/api/materials/private-file',{headers:{'oai-authenticated-user-id':'stranger'}}),context={params:Promise.resolve({id:'private-file'})};
  assert.equal((await materialApi.GET(request,context)).status,404);assert.equal((await materialApi.DELETE(request,context)).status,404);assert.equal((await analyze.GET(request,context)).status,404);
+ assert.equal((await materialApi.GET(new Request('https://test.example/api/materials/private-file'),context)).status,401);
  env.OPENAI_API_KEY='test-only';let sent=false;const oldFetch=globalThis.fetch;globalThis.fetch=async()=>{sent=true;throw new Error('Must not send');};
  try {assert.equal((await study.POST(req({question:'Summarize my notes'},'owner'))).status,403);assert.equal(sent,false);}finally{globalThis.fetch=oldFetch;delete env.OPENAI_API_KEY;}
 });

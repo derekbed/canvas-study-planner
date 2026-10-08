@@ -2,7 +2,7 @@ import { canvasConfig, encrypt, syncCanvas } from "@/lib/canvas";
 import { database, userId } from "@/lib/server";
 
 export async function GET(request: Request) {
-  const config = canvasConfig(), user = userId(request), url = new URL(request.url);
+  const config = canvasConfig(), user = await userId(request), url = new URL(request.url);
   const cookie = request.headers.get("Cookie")?.match(/(?:^|; )canvas_oauth_state=([^;]+)/)?.[1];
   const state = url.searchParams.get("state"), code = url.searchParams.get("code");
   if (!config || !user || !cookie || !state || cookie !== state || !code) return new Response("Canvas connection could not be verified.", { status: 400 });

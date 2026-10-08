@@ -27,7 +27,8 @@ function load(filename) { filename = path.resolve(root, filename); if (!path.ext
 const start = load("app/api/extension/pair/start/route.ts"), confirm = load("app/api/extension/pair/confirm/route.ts"),
   complete = load("app/api/extension/pair/complete/route.ts"), study = load("app/api/extension/study/route.ts"),
   session = load("app/api/extension/session/route.ts"), course = load("app/api/extension/course/route.ts"),
-  validation = load("lib/extension-study.ts");
+  validation = load("lib/extension-study.ts"), eligibility = load("app/api/eligibility/route.ts"),
+  workspaceRoute = load("app/api/workspace/route.ts");
 const origin = "chrome-extension://fjflmeaiboafcffacfmlaopangaedjho";
 const request = (path, body = {}, headers = {}) => new Request("http://localhost:5173" + path, {
   method: "POST", headers: { "Content-Type": "application/json", Origin: origin, ...headers }, body: JSON.stringify(body)
@@ -44,6 +45,35 @@ test("request limits reject oversized fields and private feed URLs", () => {
   assert.equal(validation.validateStudyBody(JSON.stringify({ question: "x", canvasContext: { instructions: "a".repeat(8001) } })), null);
   assert.equal(validation.validateStudyBody(JSON.stringify({ question: "x", canvasContext: { url: "https://canvas.upenn.edu/feeds/calendars/secret.ics" } })), null);
   assert.equal(validation.validateStudyBody(JSON.stringify({ question: "x", canvasContext: { pageTitle: "safe" } })).canvasContext.pageTitle, "safe");
+});
+test("hosted extension endpoints require an explicitly configured HTTPS origin", async () => {
+  const hosted = new Request("https://study.example.edu/api/extension/pair/start", {
+    method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: "{}"
+  });
+  assert.equal((await start.POST(hosted)).status, 403);
+  env.COURSEWISE_PUBLIC_ORIGIN = "https://study.example.edu";
+  try {
+    assert.equal((await start.POST(hosted)).status, 200);
+    const other = new Request("https://other.example.edu/api/extension/pair/start", {
+      method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: "{}"
+    });
+    assert.equal((await start.POST(other)).status, 403);
+  } finally { delete env.COURSEWISE_PUBLIC_ORIGIN; }
+});
+test("public workspace data requires explicit 13+ confirmation", async () => {
+  env.COURSEWISE_PUBLIC_ORIGIN = "https://study.example.edu";
+  const headers = { "oai-authenticated-user-id": "age-gate-student", Origin: "https://study.example.edu", "Content-Type": "application/json" };
+  try {
+    const get = () => new Request("https://study.example.edu/api/eligibility", { headers });
+    assert.deepEqual(await (await eligibility.GET(get())).json(), { required: true, accepted: false });
+    assert.equal((await workspaceRoute.GET(new Request("https://study.example.edu/api/workspace", { headers }))).status, 401);
+    const declined = new Request("https://study.example.edu/api/eligibility", { method: "POST", headers, body: JSON.stringify({ atLeast13: false }) });
+    assert.equal((await eligibility.POST(declined)).status, 403);
+    const accepted = new Request("https://study.example.edu/api/eligibility", { method: "POST", headers, body: JSON.stringify({ atLeast13: true }) });
+    assert.equal((await eligibility.POST(accepted)).status, 200);
+    assert.deepEqual(await (await eligibility.GET(get())).json(), { required: true, accepted: true });
+    assert.equal((await workspaceRoute.GET(new Request("https://study.example.edu/api/workspace", { headers }))).status, 200);
+  } finally { delete env.COURSEWISE_PUBLIC_ORIGIN; }
 });
 test("pairing requires signed-in confirmation and tokens expire or revoke", async () => {
   const started = await start.POST(request("/api/extension/pair/start")), { code } = await started.json();

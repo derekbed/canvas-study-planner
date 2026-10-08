@@ -2,7 +2,7 @@ import { database, jsonError, userId, type Course, type Material } from "@/lib/s
 import { analyzeMaterial } from "@/lib/material-analysis";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const user = userId(request); if (!user) return jsonError("Sign in first.", 401);
+  const user = await userId(request); if (!user) return jsonError("Sign in first.", 401);
   const { id } = await context.params;
   const db = database();
   const material = await db.prepare("SELECT * FROM materials WHERE id=? AND user_id=?").bind(id, user).first<Material>();

@@ -29,6 +29,8 @@ type Page = { tab: Tab; courseId: string };
 export default function CoursewiseApp() {
   const [data, setData] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
+  const [eligible, setEligible] = useState<boolean | null>(null);
+  const [confirmingAge, setConfirmingAge] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [pageHistory, setPageHistory] = useState<Page[]>([]);
@@ -62,7 +64,28 @@ export default function CoursewiseApp() {
     if (!response.ok) throw new Error(result.error || "Workspace could not load.");
     setData(result);
   }, []);
-  useEffect(() => { reload().catch(error => toast.error(error.message)).finally(() => setLoading(false)); }, [reload]);
+  useEffect(() => {
+    fetch("/api/eligibility", { cache: "no-store" })
+      .then(async response => {
+        const result = await response.json() as { accepted?: boolean; error?: string };
+        if (!response.ok) throw new Error(result.error || "Eligibility could not be checked.");
+        setEligible(Boolean(result.accepted));
+        if (result.accepted) await reload();
+      })
+      .catch(error => toast.error(error.message))
+      .finally(() => setLoading(false));
+  }, [reload]);
+  const confirmAge = async () => {
+    setConfirmingAge(true);
+    try {
+      const response = await fetch("/api/eligibility", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ atLeast13: true }) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Eligibility could not be saved.");
+      setEligible(true);
+      await reload();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Try again."); }
+    finally { setConfirmingAge(false); }
+  };
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("canvas") === "connected") toast.success("Canvas connected and courses synced.");
@@ -130,6 +153,15 @@ export default function CoursewiseApp() {
   }, [data]);
   const demo = data?.courses.some(c => c.source === "demo") && !data.connection;
 
+  if (eligible === false) return <main className="legal-page eligibility-page">
+    <Toaster position="top-right" richColors />
+    <h1>Welcome to Coursewise</h1>
+    <p>Coursewise is for high school and college students age 13 or older. Please confirm your eligibility before your workspace or Canvas data is loaded. We do not ask for your birth date.</p>
+    <button type="button" onClick={confirmAge} disabled={confirmingAge}>{confirmingAge ? "Saving…" : "I am at least 13 years old"}</button>
+    <p>If you are under 13, do not continue or use the extension.</p>
+    <p><a href="/privacy-policy">Privacy notice</a> · <a href="/accessibility">Accessibility</a></p>
+  </main>;
+
   return <main className="app-shell">
     <Toaster position="top-right" richColors />
     <header className="topbar">
@@ -162,6 +194,7 @@ export default function CoursewiseApp() {
         </>}
       </Tabs>
       {data && <details className="focus-drawer"><summary>Focus timer</summary><FocusTimer data={data} onMutate={mutate}/></details>}
+      <footer className="site-footer"><a href="/privacy-policy">Privacy notice</a><a href="/accessibility">Accessibility</a></footer>
     </div>
 
     <Sheet open={Boolean(selectedEvent)} onOpenChange={open => !open && setSelectedEventId(null)}>

@@ -1,0 +1,28 @@
+# Coursewise audit of the “10 ways to get your app sued or taken down” checklist
+
+Reviewed against the [article](https://www.murphmaxxing.com/vault/10-ways-to-get-your-app-sued) on October 7, 2026. This records source-code findings for the private preview. It is not a certification of a live deployment or a legal opinion.
+
+| # | Finding in this source | Remaining release check |
+| --- | --- | --- |
+| 1. No privacy policy | Addressed: `/privacy-policy` exists and is linked from the site and extension. | Configure the actual operator and public contact, publish the page at the real origin, and check anonymous access. |
+| 2. Policy omits collected data | Addressed in source: the notice now names the account identifier, school data, grade history, focus sessions, uploads, extracted text, indexed passages, embeddings, chats, preferences, Canvas credentials, and extension data. | Reconcile the notice with the live identity provider, logs, backups, and all deployment services. |
+| 3. Policy omits AI | Addressed in source: OpenAI API, the sent fields, embedding requests, `store: false`, and OpenAI's published default training and retention practices are stated. | Verify the actual API organization's data controls and school authorization for student content. |
+| 4. Unnamed third parties | Addressed for current source: Sites/Cloudflare, ChatGPT sign-in, OpenAI, and school Canvas/Instructure are named. No analytics, ad pixel, email sender, or payment integration appears in the app source. | Inspect browser and Worker network traffic on the live site and extension, then update the notice for every actual recipient. |
+| 5. Promised deletion does not happen | Fixed: workspace deletion removes R2 originals, D1 student records, Canvas connections, and extension sessions and pairing records. A regression test checks the object and session removal. | Test a real storage outage, retries, backups, and the host's deletion window. The notice expressly discloses the minimal initialization marker and possible provider logs/backups. |
+| 6. Public storage bucket | Cannot tell from source: uploads use an R2 binding and the download API checks ownership. No code exposes a public bucket URL. [Cloudflare says R2 buckets start private](https://developers.cloudflare.com/r2/buckets/public-buckets/), but the production settings can change. | In the actual bucket settings, confirm Public Development URL is disabled and no public Custom Domain is attached. Test anonymous access with a synthetic object and a private browser. Also test an unauthenticated and second-account request to `/api/materials/{id}`. |
+| 7. Fake testimonials | No testimonials or review widget appear in this source. | If marketing pages or external store screenshots include reviews, verify real use and disclose material connections under the [FTC review rule](https://www.ftc.gov/business-guidance/resources/consumer-reviews-testimonials-rule-questions-answers). |
+| 8. Hard cancellation | No Coursewise paid subscription or cancellation flow appears in this source. | Re-audit before adding payment or an external checkout. |
+| 9. Surprise trial charge | No card collection, trial, or recurring charge appears in this source. | Re-audit before adding payment or an external checkout. |
+| 10. Chatbot self-harm response | Added an AI identity notice and a narrow server-side response for explicit first-person self-harm messages. Those messages get human crisis resources without reaching OpenAI; tests cover this path and an academic false-positive example. Coursewise is presented as a study tool. | This pattern is not a comprehensive safety classifier. Test ambiguous, indirect, and adversarial cases with a qualified safety reviewer. Counsel should determine whether Coursewise falls within each jurisdiction's *AI companion* definition before launch. [New York's definition](https://www.nysenate.gov/legislation/laws/GBS/1700) distinguishes certain research or technical assistance systems; California's [SB 243](https://leginfo.legislature.ca.gov/faces/billHistoryClient.xhtml?bill_id=202520260SB243) is separate. |
+
+## Data and network inventory used for this pass
+
+- Student D1 tables: `courses`, `events`, `materials`, `study_blocks`, `settings`, `canvas_connections`, `chat_conversations`, `chat_messages`, `material_vectors`, `calendar_imports`, `preferences`, `flashcards`, `focus_sessions`, `grade_history`, `course_knowledge`, and `course_passages`.
+- Temporary authorization tables: `extension_pairings` and `extension_sessions`. The former can contain a student ID after approval; the latter holds a hashed pairing token and student ID.
+- Uploads: R2 keys recorded in `materials.r2_key`; reads require an owned material row. The website and extension upload routes both write to R2.
+- First-party outbound integrations: `api.openai.com` for Responses and embeddings; the configured school Canvas origin for OAuth and sync; a user-supplied Canvas calendar feed URL for a one-time import. Chrome content scripts also read the signed-in Canvas origin after extension consent.
+- Browser storage: extension appearance and read-item preferences in Chrome local storage; extension pairing token in Chrome session storage.
+
+## Release decision
+
+Keep the current preview private. The source changes address the items that can be changed locally; items 1–6 and 10 still require live deployment, provider, school, and safety checks. Items 7–9 become applicable if marketing testimonials or payments are added. The [student launch plan](./PUBLIC_LAUNCH_PLAN.md) tracks the broader ADA, minor-student, FERPA, and Chrome Web Store gates.

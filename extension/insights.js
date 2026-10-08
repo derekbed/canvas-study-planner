@@ -435,6 +435,11 @@
     wrapper.style.setProperty("--cw-dashboard-left", `${wrapper.getBoundingClientRect().left}px`);
     wrapper.style.setProperty("--cw-rail-width", `${state.railWidth}px`);
     document.querySelector(".cw-hub--rail")?.setAttribute("data-wide", String(state.railWidth >= 420));
+    const handle = document.querySelector(".cw-rail-resize-handle");
+    if (handle) {
+      handle.setAttribute("aria-valuemax", String(maxRailWidth()));
+      handle.setAttribute("aria-valuenow", String(state.railWidth));
+    }
   }
   let railSaveQueue = Promise.resolve();
   function persistRail() {
@@ -495,7 +500,20 @@
     document.body.addEventListener("lostpointercapture", stop);
   }
   function railHandle() {
-    const handle = node("div", undefined, "cw-rail-resize-handle"); handle.setAttribute("role", "separator"); handle.setAttribute("aria-label", "Resize Coursewise organizer"); handle.title = "Drag to resize; drag far enough to collapse";
+    const handle = node("div", undefined, "cw-rail-resize-handle"); handle.setAttribute("role", "separator"); handle.setAttribute("aria-label", "Resize Coursewise organizer"); handle.title = "Drag or use arrow keys to resize";
+    handle.tabIndex = 0;
+    handle.setAttribute("aria-orientation", "vertical");
+    handle.setAttribute("aria-valuemin", String(MIN_RAIL_WIDTH));
+    handle.setAttribute("aria-valuemax", String(maxRailWidth()));
+    handle.setAttribute("aria-valuenow", String(state.railWidth));
+    handle.addEventListener("keydown", event => {
+      const delta = { ArrowLeft: 10, ArrowRight: -10, PageUp: 40, PageDown: -40 }[event.key];
+      const width = event.key === "Home" ? MIN_RAIL_WIDTH : event.key === "End" ? maxRailWidth() : delta == null ? null : state.railWidth + delta;
+      if (width == null) return;
+      event.preventDefault(); event.stopPropagation();
+      state.railWidth = Math.min(maxRailWidth(), Math.max(MIN_RAIL_WIDTH, width));
+      applyRailSize(); persistRail();
+    });
     handle.addEventListener("pointerdown", event => startRailResize(event));
     return handle;
   }
@@ -1019,5 +1037,14 @@
     window.addEventListener("resize", applyRailSize);
     onRoute();
   }
-  initialize();
+  let initialized = false;
+  function startAfterConsent() {
+    if (initialized) return;
+    initialized = true;
+    initialize();
+  }
+  chrome.storage.local.get("cwDataConsent").then(saved => { if (saved.cwDataConsent === true) startAfterConsent(); }).catch(() => {});
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.cwDataConsent?.newValue === true) startAfterConsent();
+  });
 })();

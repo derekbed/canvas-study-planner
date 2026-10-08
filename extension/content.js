@@ -67,7 +67,12 @@
   if (typeof module !== "undefined" && module.exports) module.exports = { extract, safeUrl };
   if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message?.type === "COURSEWISE_EXTRACT") sendResponse(extract(document, window, window.location.href));
+      if (message?.type === "COURSEWISE_EXTRACT") {
+        chrome.storage.local.get("cwDataConsent").then(saved => sendResponse(saved.cwDataConsent === true
+          ? extract(document, window, window.location.href)
+          : { supported: false, message: "Agree to the Coursewise data disclosure first.", fieldsFound: [] }));
+        return true;
+      }
     });
   }
 })();

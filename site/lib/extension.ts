@@ -1,4 +1,4 @@
-import { database, jsonError } from "@/lib/server";
+import { ageGateRequired, database, jsonError, setting } from "@/lib/server";
 
 export const EXTENSION_ID = "fjflmeaiboafcffacfmlaopangaedjho";
 export const EXTENSION_ORIGIN = new RegExp(`^chrome-extension://${EXTENSION_ID}$`);
@@ -7,9 +7,15 @@ export const DEV_ORIGIN = "http://localhost:5173";
 export const CODE_TTL = 5 * 60 * 1000;
 export const TOKEN_TTL = 60 * 60 * 1000;
 
-export function localOnly(request: Request) {
+export function extensionSiteAllowed(request: Request) {
   const url = new URL(request.url);
-  return url.protocol === "http:" && url.hostname === "localhost" && url.port === "5173";
+  if (process.env.NODE_ENV !== "production" && url.protocol === "http:" && url.hostname === "localhost" && url.port === "5173") return true;
+  const configured = setting("COURSEWISE_PUBLIC_ORIGIN");
+  if (!configured) return false;
+  try {
+    const publicUrl = new URL(configured);
+    return publicUrl.protocol === "https:" && publicUrl.pathname === "/" && !publicUrl.search && !publicUrl.hash && url.origin === publicUrl.origin;
+  } catch { return false; }
 }
 export function extensionHeaders(request: Request): HeadersInit {
   const origin = request.headers.get("origin") || "";
@@ -28,14 +34,14 @@ export function extensionError(request: Request, message: string, status: number
   return extensionResponse(request, { error: message }, status);
 }
 export function preflight(request: Request) {
-  if (!localOnly(request) || !EXTENSION_ORIGIN.test(request.headers.get("origin") || "")) return jsonError("Extension unavailable.", 403);
+  if (!extensionSiteAllowed(request) || !EXTENSION_ORIGIN.test(request.headers.get("origin") || "")) return jsonError("Extension unavailable.", 403);
   return new Response(null, { status: 204, headers: extensionHeaders(request) });
 }
 export function fromExtension(request: Request) {
   const origin = request.headers.get("origin") || "";
   // Chrome's extension service worker can omit Origin on an authenticated GET.
   // Every GET route still verifies the paired bearer token via extensionUser.
-  return localOnly(request) && (EXTENSION_ORIGIN.test(origin) || (request.method === "GET" && !origin));
+  return extensionSiteAllowed(request) && (EXTENSION_ORIGIN.test(origin) || (request.method === "GET" && !origin));
 }
 export function randomSecret() {
   return Array.from(crypto.getRandomValues(new Uint8Array(24)), b => b.toString(16).padStart(2, "0")).join("");
@@ -49,5 +55,10 @@ export async function extensionUser(request: Request): Promise<string | null> {
   if (!match) return null;
   const row = await database().prepare("SELECT user_id FROM extension_sessions WHERE token_hash=? AND revoked=0 AND expires_at>?")
     .bind(await hashSecret(match[1]), Date.now()).first<{ user_id: string }>();
-  return row?.user_id || null;
+  if (!row?.user_id) return null;
+  if (!ageGateRequired()) return row.user_id;
+  const preference = await database().prepare("SELECT value FROM preferences WHERE user_id=?")
+    .bind(row.user_id).first<{ value: string }>();
+  try { return JSON.parse(preference?.value || "{}").age13ConfirmedAt ? row.user_id : null; }
+  catch { return null; }
 }

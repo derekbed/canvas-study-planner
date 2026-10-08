@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Coursewise</title><link rel="stylesheet" href="sidepanel.css"></head>
+<body><main>
+  <header><div><p class="eyebrow">Canvas companion</p><h1>Coursewise</h1></div></header>
+  <section id="disclosure" aria-labelledby="disclosure-heading">
+    <h2 id="disclosure-heading">Before you use Coursewise</h2>
+    <p>After you connect a school, Coursewise reads courses, grades, assignments, and announcements from your signed-in Canvas account to show appearance controls and study summaries. Coursewise saves appearance choices, course names and pictures, and IDs of items you mark as read in this browser. It does not send this data to a Coursewise server.</p>
+    <p>Coursewise does not change your Canvas submissions or grades. <a href="privacy.html" target="_blank" rel="noopener">Read the privacy notice</a>.</p>
+    <label><input id="data-consent" type="checkbox"> I am at least 13 and agree to this data use.</label>
+    <button id="continue" type="button" disabled>Continue</button>
+  </section>
+  <section id="ready" hidden aria-labelledby="ready-heading">
+    <h2 id="ready-heading">Connect your school's Canvas</h2>
+    <p>Enter the HTTPS address of the Canvas site where you sign in. Chrome will ask for access to that site only.</p>
+    <form id="school-form"><label for="school-url">Canvas address</label><input id="school-url" type="url" required placeholder="https://canvas.example.edu" autocomplete="url"><button id="connect" type="submit">Connect Canvas</button></form>
+    <p id="school-status" role="status" aria-live="polite"></p>
+    <h3>Connected schools</h3><ul id="schools"></ul>
+    <p>After connecting, reload your Canvas dashboard. Use its three-dot menu for <strong>Coursewise appearance</strong>.</p>
+  </section>
+</main><script src="sidepanel.js"></script></body></html>

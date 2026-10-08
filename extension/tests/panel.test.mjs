@@ -30,6 +30,9 @@ function panelHarness({ paired = false } = {}) {
     return elements.get(id);
   }
   const chrome = { storage: { local: {
+    async get() { return { cwDataConsent: true }; },
+    async remove() {}, async set() {}
+  }, session: {
     async get() { return paired ? { extensionToken: "a".repeat(48), expiresAt: Date.now() + 60_000 } : {}; },
     async remove() {}, async set() {}
   } }, tabs: {

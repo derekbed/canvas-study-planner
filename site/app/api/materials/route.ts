@@ -2,7 +2,7 @@ import { bucket, cleanText, database, jsonError, now, userId } from "@/lib/serve
 import { extractMaterialText } from "@/lib/material-text";
 
 export async function POST(request: Request) {
-  const user = userId(request); if (!user) return jsonError("Sign in first.", 401);
+  const user = await userId(request); if (!user) return jsonError("Sign in first.", 401);
   let form: FormData;
   try { form = await request.formData(); } catch { return jsonError("Could not read the file."); }
   const file = form.get("file"), courseId = cleanText(form.get("courseId"), 150), kind = cleanText(form.get("kind"), 30) || "notes";

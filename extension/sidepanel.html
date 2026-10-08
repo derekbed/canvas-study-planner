@@ -3,6 +3,14 @@
 <title>Coursewise</title><link rel="stylesheet" href="sidepanel.css"></head>
 <body><main>
   <header><div><p class="eyebrow">Canvas bridge · local prototype</p><h1>Coursewise</h1></div><a href="http://localhost:5173/" id="workspace" target="_blank" rel="noopener">Full workspace ↗</a></header>
+  <section id="disclosure" aria-labelledby="disclosure-heading">
+    <h2 id="disclosure-heading">Before you use Coursewise on Canvas</h2>
+    <p>Coursewise reads courses, grades, assignments, announcements, and visible page text from your signed-in Canvas account to show study tools. It stores appearance settings and read-item IDs in this browser. If you pair your Coursewise account, you can upload course files and save chats there. Page text and questions are sent to Coursewise and OpenAI only when you submit a question or request AI analysis.</p>
+    <p><a href="http://localhost:5173/privacy-policy" target="_blank" rel="noopener">Read the privacy notice</a> before continuing.</p>
+    <label><input id="data-consent" type="checkbox"> I am at least 13 and agree to this data use.</label>
+    <button id="continue" type="button" disabled>Continue</button>
+  </section>
+  <div id="extension-content" hidden>
   <section aria-labelledby="context-heading">
     <div class="row"><h2 id="context-heading">Canvas context</h2><span id="freshness" class="status">Not captured</span></div>
     <p id="course" class="course">Open a Canvas course page to begin.</p>
@@ -11,7 +19,7 @@
     <details id="preview"><summary>Exact page text to send</summary><dl id="fields"></dl></details>
   </section>
   <section aria-labelledby="ask-heading"><h2 id="ask-heading">Ask Coursewise</h2>
-    <p class="note">When you submit, the text shown above and your question go to local Coursewise and OpenAI. Nothing is sent on page navigation or refresh.</p>
+    <p class="note">Coursewise is an AI study tool, not a person or crisis service. When you submit, the text shown above and your question go to local Coursewise and may be sent to OpenAI. Nothing is sent on page navigation or refresh.</p>
     <button id="new-chat" type="button" class="quiet">New conversation</button><div id="chat-history" aria-label="Conversation"></div>
     <form id="ask-form"><label for="question">Your question</label><textarea id="question" rows="4" maxlength="2000" placeholder="What should I review before this assignment?"></textarea>
     <button id="submit" type="submit">Ask Coursewise</button></form>
@@ -21,4 +29,5 @@
   <section aria-labelledby="pair-heading"><h2 id="pair-heading">Local session</h2><p id="pair-status" role="status">Checking pairing…</p>
     <div class="actions"><button id="pair" type="button">Pair with Coursewise</button><button id="finish" type="button" hidden>Finish pairing</button><button id="signout" type="button" class="quiet" hidden>Sign out</button></div>
   </section>
+  </div>
 </main><script src="chat-format.js"></script><script src="sidepanel.js"></script></body></html>

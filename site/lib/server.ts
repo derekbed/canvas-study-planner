@@ -9,11 +9,21 @@ export type Settings = { user_id: string; available_days: string; hours_per_week
 export function database() { return env.DB as D1Database; }
 export function bucket() { return env.BUCKET as R2Bucket; }
 export function setting(name: string): string | undefined { return (env as unknown as Record<string, string | undefined>)[name]; }
-export function userId(request: Request): string | null {
+export function authenticatedUserId(request: Request): string | null {
   const authenticated = request.headers.get("oai-authenticated-user-id");
   if (authenticated) return authenticated;
   const hostname = new URL(request.url).hostname;
   return process.env.NODE_ENV !== "production" && (hostname === "localhost" || hostname === "127.0.0.1") ? "local-demo" : null;
+}
+export function ageGateRequired() { return process.env.NODE_ENV === "production" || Boolean(setting("COURSEWISE_PUBLIC_ORIGIN")); }
+export async function userId(request: Request): Promise<string | null> {
+  const user = authenticatedUserId(request);
+  if (!user) return null;
+  // A public deployment must not serve student records before age eligibility is affirmed.
+  if (!ageGateRequired()) return user;
+  const row = await database().prepare("SELECT value FROM preferences WHERE user_id=?").bind(user).first<{ value: string }>();
+  try { return JSON.parse(row?.value || "{}").age13ConfirmedAt ? user : null; }
+  catch { return null; }
 }
 export function jsonError(message: string, status = 400) { return Response.json({ error: message }, { status }); }
 export function now() { return new Date().toISOString(); }

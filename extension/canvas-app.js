@@ -828,6 +828,7 @@
     }
     append(layout, side, content, rail); shell.append(layout);
   }
+  function initialize() {
   navItem();
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
@@ -870,4 +871,15 @@
     navItem();
     if (document.getElementById("cw-canvas-nav-item") || navRetries >= 30) clearInterval(retryNav);
   }, 500);
+  }
+  let initialized = false;
+  function startAfterConsent() {
+    if (initialized) return;
+    initialized = true;
+    initialize();
+  }
+  chrome.storage.local.get("cwDataConsent").then(saved => { if (saved.cwDataConsent === true) startAfterConsent(); }).catch(() => {});
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.cwDataConsent?.newValue === true) startAfterConsent();
+  });
 })();

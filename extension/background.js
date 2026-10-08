@@ -26,9 +26,9 @@ function appearancePreferences(patch) {
   return operation;
 }
 async function session() {
-  const saved = await chrome.storage.local.get(["extensionToken", "expiresAt"]);
+  const saved = await chrome.storage.session.get(["extensionToken", "expiresAt"]);
   if (!saved.extensionToken || !saved.expiresAt || saved.expiresAt <= Date.now()) {
-    await chrome.storage.local.remove(["extensionToken", "expiresAt"]);
+    await chrome.storage.session.remove(["extensionToken", "expiresAt"]);
     return null;
   }
   return { token: saved.extensionToken, expiresAt: saved.expiresAt };
@@ -44,7 +44,7 @@ async function request(path, { method = "POST", body, bearer = true } = {}) {
       ...(body === undefined ? {} : { body: body instanceof FormData ? body : JSON.stringify(body) }) });
   } catch { throw { status: 503, message: "Coursewise is not reachable at http://localhost:5173." }; }
   const data = await response.json().catch(() => ({}));
-  if (response.status === 401) await chrome.storage.local.remove(["extensionToken", "expiresAt"]);
+  if (response.status === 401) await chrome.storage.session.remove(["extensionToken", "expiresAt"]);
   if (!response.ok) throw { status: response.status, message: typeof data.error === "string" ? data.error.slice(0, 240) : "Coursewise request failed." };
   return data;
 }
@@ -54,6 +54,8 @@ function decodeBase64(value) {
   return bytes;
 }
 async function handle(message) {
+  const consent = await chrome.storage.local.get("cwDataConsent");
+  if (consent.cwDataConsent !== true) throw { status: 403, message: "Open the Coursewise side panel and agree to the data disclosure first." };
   switch (message.type) {
     case "cw:getSession": {
       const current = await session();
@@ -66,12 +68,12 @@ async function handle(message) {
     }
     case "cw:completePairing": {
       const data = await request("/api/extension/pair/complete", { body: { code: message.code }, bearer: false });
-      await chrome.storage.local.set({ extensionToken: data.token, expiresAt: data.expiresAt });
+      await chrome.storage.session.set({ extensionToken: data.token, expiresAt: data.expiresAt });
       return { paired: true, expiresAt: data.expiresAt };
     }
     case "cw:signOut": {
       const current = await session();
-      await chrome.storage.local.remove(["extensionToken", "expiresAt"]);
+      await chrome.storage.session.remove(["extensionToken", "expiresAt"]);
       if (current) try {
         await fetch(`${API}/api/extension/session`, { method: "POST", headers: { Authorization: `Bearer ${current.token}` } });
       } catch { /* local session is already removed */ }

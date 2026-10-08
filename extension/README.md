@@ -1,12 +1,24 @@
 # Coursewise Canvas bridge · local prototype
 
-This unpacked Manifest V3 extension reads visible text from the Canvas course or assignment page you are viewing. It does not use Canvas OAuth, hidden page data, a calendar feed, or an OpenAI key. It sends a question and the displayed context only after you press **Ask Coursewise**.
+For the extension-only first launch, use [LOCAL_RELEASE.md](LOCAL_RELEASE.md). Its build includes Canvas appearance and read-only study summaries without the website, account pairing, or AI features. The instructions below describe the full development prototype retained for a later edition.
+
+This unpacked Manifest V3 extension starts reading Canvas data only after the student accepts the side-panel data disclosure and confirms they are at least 13. It reads visible text from the Canvas course or assignment page the student is viewing. It does not use Canvas OAuth, hidden page data, a calendar feed, or an OpenAI key. It sends a question and the displayed context only after the student presses **Ask Coursewise**.
 
 ## Embedded Canvas workspace
 
 The extension adds **Coursewise** to the Canvas global left navigation, between Calendar and Inbox where those items are present. Click it to open a workspace inside Canvas. **Today** separates assignments, exams and quizzes, announcements, and calendar events, with a course filter. **Courses** shows Canvas grades and deadlines alongside matched saved Coursewise courses. You can save a Canvas course to Coursewise from its card. **Materials** uploads a syllabus to a saved course and lets you delete an upload. **Knowledge** analyzes a readable syllabus automatically after upload when AI excerpt consent is enabled, or when you click **Analyze syllabus**, stores a brief, source-labeled facts and passages, and asks for missing information. Student answers are saved as student-provided facts. **Ask** retrieves only relevant facts and passages plus recent chat and a compact conversation summary. Current page text is optional and is sent only when you check its box. The answer includes source labels and a follow-up form when a relevant fact is missing.
 
-Course matching uses Canvas course ID first, then course code, then exact name. PDF files can be uploaded, but PDF text extraction in the embedded extension is pending; TXT and Markdown are indexed immediately. The Coursewise website can extract PDF text in the browser before upload. The extension stores its short lived pairing token in Chrome local storage. It keeps Canvas data and page context in memory.
+Course matching uses Canvas course ID first, then course code, then exact name. PDF files can be uploaded, but PDF text extraction in the embedded extension is pending; TXT and Markdown are indexed immediately. The Coursewise website can extract PDF text in the browser before upload. The extension stores its short-lived pairing token in Chrome session storage. It keeps Canvas data and page context in memory.
+
+## Production package
+
+The checked-in manifest and scripts remain scoped to the local University of Pennsylvania prototype. To stage a school-specific package, configure the hosted site with `COURSEWISE_PUBLIC_ORIGIN` set to its exact HTTPS origin, then run:
+
+```sh
+node extension/scripts/build-release.mjs --site https://study.example.edu --canvas https://canvas.example.edu --out extension/release
+```
+
+The builder replaces the local URL and Canvas host, restricts host permissions to those two HTTPS origins, and includes the extension icons. It does not publish to the Chrome Web Store. Before submission, supply the actual public privacy-policy URL, store listing text and screenshots, developer contact, institution approval, and successful keyboard/screen-reader tests. The extension ID must match `site/lib/extension.ts` and the Chrome Web Store listing.
 
 ## Canvas appearance
 
@@ -47,7 +59,7 @@ These read-only summaries use Canvas's current-user course, enrollment, assignme
 3. Set `OPENAI_API_KEY` in the site's ignored `.dev.vars` or hosted secret manager. Run `pnpm dev` in `site/` and open `http://localhost:5173/`. Sign in through the local Coursewise sign-in page and enable **Data & privacy → AI excerpt consent**.
 4. In Chrome, visit `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select this top-level `extension/` directory. The manifest includes a public key to keep its local extension ID stable; the dev server allows only that ID for cross-origin requests.
 5. Open a course assignment at `https://canvas.upenn.edu` after signing in normally. Click the Coursewise toolbar button. Chrome 114+ opens the side panel; an older browser opens Coursewise in a new tab.
-6. In the side panel, click **Pair with Coursewise**. Confirm in the normal Coursewise tab while signed in, return to the panel, and click **Finish pairing**. The extension stores only the one-hour token in Chrome local storage. The pairing code expires after five minutes.
+6. In the side panel, accept the data disclosure, then click **Pair with Coursewise**. Confirm in the normal Coursewise tab while signed in, return to the panel, and click **Finish pairing**. The extension stores only the one-hour token in Chrome session storage. The pairing code expires after five minutes.
 7. Click **Refresh Canvas context**, expand **Exact page text to send**, enter a question, and click **Ask Coursewise**. The answer and source labels appear in the panel.
 
 For the embedded workflow, open Canvas, click **Coursewise** in its left rail, and pair using **Pair with Coursewise** if prompted. Confirm in the local Coursewise tab, return to Canvas, and click **Finish pairing**. Choose a saved course in **Materials** to upload a syllabus. In **Ask**, choose that course, review the selected material sources, optionally include the previous Canvas page context, and submit a question. Use the browser Back button to return to the prior Canvas view.
@@ -75,4 +87,4 @@ From the repository root, run `node --test extension/tests/*.test.mjs` for sanit
 
 ## Limits
 
-This is a local development flow restricted to `http://localhost:5173`. Pairing relies on Coursewise's local sign-in cookie and is not a production authentication design. Saved materials are used only when the visible Canvas course matches a saved Coursewise course by Canvas ID, code, or exact name, and the account has AI excerpt consent. Canvas themes may need selector updates. A live Canvas account and server OpenAI key are needed for an end-to-end question.
+The checked-in package is a local development flow restricted to `http://localhost:5173`. Hosted pairing is enabled only for an exact configured HTTPS site origin and the pinned extension ID. Saved materials are used only when the visible Canvas course matches a saved Coursewise course by Canvas ID, code, or exact name, and the account has AI excerpt consent. Canvas themes may need selector updates. A live Canvas account and server OpenAI key are needed for an end-to-end question.

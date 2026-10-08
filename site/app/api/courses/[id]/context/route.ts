@@ -2,7 +2,7 @@ import { database, jsonError, userId, type Course } from "@/lib/server";
 import { briefFor, gapsFor, knowledgeFor, parseFacts } from "@/lib/course-knowledge";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
-  const user = userId(request); if (!user) return jsonError("Sign in first.", 401);
+  const user = await userId(request); if (!user) return jsonError("Sign in first.", 401);
   const { id } = await context.params;
   const course = await database().prepare("SELECT * FROM courses WHERE id=? AND user_id=?").bind(id, user).first<Course>();
   if (!course) return jsonError("Course not found.", 404);

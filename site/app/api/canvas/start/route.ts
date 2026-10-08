@@ -2,7 +2,7 @@ import { canvasConfig } from "@/lib/canvas";
 import { jsonError, userId } from "@/lib/server";
 
 export async function GET(request: Request) {
-  if (!userId(request)) return jsonError("Sign in first.", 401);
+  if (!await userId(request)) return jsonError("Sign in first.", 401);
   const config = canvasConfig(); if (!config) return jsonError("Canvas connection is not configured for this school yet.", 503);
   const callback = new URL("/api/canvas/callback", request.url).toString();
   const state = crypto.randomUUID();

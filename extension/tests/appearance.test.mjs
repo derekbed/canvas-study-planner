@@ -4,12 +4,16 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const source = fs.readFileSync(new URL('../background.js', import.meta.url), 'utf8');
 function harness(initial = {}) {
-  const data = structuredClone(initial);
+  const data = { cwDataConsent: true, ...structuredClone(initial) };
   let listener;
   vm.runInNewContext(source, { chrome: {
     sidePanel: { setPanelBehavior() {} },
     runtime: { onMessage: { addListener(fn) { listener = fn; } } },
-    storage: { local: {
+    storage: { session: {
+      async get() { return structuredClone(data); },
+      async set(value) { Object.assign(data, structuredClone(value)); },
+      async remove(keys) { keys.forEach(key => delete data[key]); }
+    }, local: {
       async get() { return structuredClone(data); },
       async set(value) { Object.assign(data, structuredClone(value)); },
       async remove(keys) { keys.forEach(key => delete data[key]); }
@@ -36,4 +40,10 @@ test('invalid appearance does not overwrite the saved choice', async () => {
   const send = harness({cwCanvasPreferences:{canvasBackground:'#f2f9f6',canvasThemeMode:'system'}});
   assert.equal((await send({canvasBackground:'invalid'})).ok, false);
   assert.equal((await send({}, 'cw:getPreferences')).data.canvasBackground, '#f2f9f6');
+});
+test('data requests are blocked before disclosure consent', async () => {
+  const send = harness({ cwDataConsent: false });
+  const result = await send({}, 'cw:getPreferences');
+  assert.equal(result.ok, false);
+  assert.equal(result.error.status, 403);
 });

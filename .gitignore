@@ -1,2 +1,5 @@
 .pnpm-store/
 .DS_Store
+extension/release/
+extension/local-release/
+extension/coursewise-local-store.zip
