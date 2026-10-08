@@ -30,7 +30,7 @@ Coursewise adds appearance settings and course organization tools to the Canvas 
 ## Release gates
 
 1. Confirm the operator name and that `canvascoursewise@proton.me` is monitored. Review the policy and listing for applicable student-data requirements. The public HTTPS privacy-policy URL is live.
-2. Capture at least one real, appropriately redacted Canvas screenshot at the dimensions accepted by the dashboard. Do not use fabricated course data or reveal a student's private grades in the listing.
+2. Capture at least one screenshot of the real extension UI at the dimensions accepted by the dashboard. The onboarding side panel can be shown before connecting a school, so no student data needs to appear. Do not reveal a student's private grades in the listing.
 3. Test with signed-in Canvas accounts on several deployments, including an `instructure.com` subdomain and a school custom domain. Verify add, reload, appearance, grades, deadlines, announcements, read-state, disconnect, and permission denial/revocation.
 4. Complete keyboard, zoom, and screen-reader checks of the side panel and injected Canvas UI. Fix failures found.
 5. Upload the final ZIP, complete all dashboard privacy and permission fields, add screenshots and support contact, and submit for Chrome review. The store review is the final publication gate.

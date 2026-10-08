@@ -31,6 +31,7 @@ next.addEventListener("click", async () => {
   if (!consent.checked) return;
   await chrome.storage.local.set({ cwDataConsent: true });
   show(true);
+  $("ready-heading").focus();
 });
 $("school-form").addEventListener("submit", async event => {
   event.preventDefault();

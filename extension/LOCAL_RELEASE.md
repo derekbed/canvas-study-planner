@@ -16,6 +16,14 @@ The generated package requests no site access at install time. It declares optio
 
 The package targets Chrome 119 or later. Build a ZIP containing only the files inside `extension/local-release`, then upload it to the Chrome Web Store Developer Dashboard. Use [STORE_SUBMISSION.md](STORE_SUBMISSION.md) for proposed listing text, permission explanations, privacy declarations, and final gates.
 
-`privacy.html` is an in-extension copy. The repository includes a GitHub Pages workflow and public policy source under `docs/`; after the workflow deploys, use the resulting URL in the Chrome Web Store privacy field. A full website or Coursewise backend is not required.
+`privacy.html` is an in-extension copy. The public policy is live at https://derekbed.github.io/canvas-study-planner/ and belongs in the Chrome Web Store privacy field. A full website or Coursewise backend is not required.
+
+## Safe store screenshot
+
+Take one screenshot of the actual installed release before connecting any school. Open a blank Chrome tab, open the Coursewise side panel, and leave the initial consent screen visible. That screen contains no Canvas account information. Capture the browser window, crop to the side panel and surrounding Chrome context, and export at 1280×800 or 640×400 pixels without stretching the image. Check the final file for account names, course names, grades, browser profile details, and notifications before uploading it. Store screenshots should show the real extension UI; a privacy-policy page or generated mockup is not a substitute.
+
+## Screen-reader check
+
+On macOS, press Command+F5 to start VoiceOver. With the side panel open, press Control+Option+Right Arrow to read through its heading, privacy link, consent checkbox, and Continue button. Use Tab and Shift+Tab to confirm the same controls are reachable in order. Check the box with Space, activate Continue with Return or Space, and confirm VoiceOver announces the “Connect your school's Canvas” heading. Then check that the Canvas address field has a spoken label, form errors are announced, and each connected school's Disconnect button has a distinct spoken name. Repeat at 200% Chrome zoom. Press Command+F5 to stop VoiceOver.
 
 Run `node --test extension/tests/*.test.mjs` for automated checks. Test the installed package on representative Canvas deployments, including a custom school domain, and run keyboard and screen-reader checks before submitting. Schools may customize Canvas; no code-only check can prove compatibility with every deployment.

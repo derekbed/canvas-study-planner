@@ -10,7 +10,7 @@
     <button id="continue" type="button" disabled>Continue</button>
   </section>
   <section id="ready" hidden aria-labelledby="ready-heading">
-    <h2 id="ready-heading">Connect your school's Canvas</h2>
+    <h2 id="ready-heading" tabindex="-1">Connect your school's Canvas</h2>
     <p>Enter the HTTPS address of the Canvas site where you sign in. Chrome will ask for access to that site only.</p>
     <form id="school-form"><label for="school-url">Canvas address</label><input id="school-url" type="url" required placeholder="https://canvas.example.edu" autocomplete="url"><button id="connect" type="submit">Connect Canvas</button></form>
     <p id="school-status" role="status" aria-live="polite"></p>
