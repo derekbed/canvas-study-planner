@@ -202,6 +202,25 @@ body.cw-horizontal-view .ic-DashboardCard .ic-DashboardCard__header > .ic-Dashbo
 }
 
 /* Let Canvas surfaces follow the page color without changing course event colors. */
+/* These Canvas shell rules are shared by the embedded and local-only editions. */
+body.cw-canvas-themed { background: var(--cw-canvas-background, #f7faf9) !important; }
+body.cw-canvas-themed :is(#application, #wrapper, #main, #not_right_side, #content, #right-side-wrapper, #right-side, #dashboard, #dashboard_header_container, .ic-Layout-contentMain, .ic-Dashboard-header, .ic-Dashboard-header__layout, .ic-DashboardCard__box) {
+  background-color: var(--cw-canvas-background, #f7faf9) !important;
+  background-image: none !important;
+}
+body.cw-canvas-themed.cw-organizer-dashboard:not(.cw-canvas-app-active) #content h1 { color: var(--cw-canvas-ink, #1a2c3d) !important; background: transparent !important; }
+body.cw-canvas-themed :is(#header, .ic-app-header, #global_nav, .ic-app-header__menu-list, .ic-app-header__logomark-container) {
+  background: var(--cw-nav-background, #b9ded4) !important;
+  color: var(--cw-nav-ink, #1a2c3d) !important;
+}
+body.cw-canvas-themed .ic-app-header__menu-list-item :is(a, button, span, i, svg, .menu-item__text, .ic-icon-svg) { color: var(--cw-nav-ink, #1a2c3d) !important; }
+body.cw-canvas-themed :is(#header, .ic-app-header, #global_nav) .ic-icon-svg :is(path, use) { fill: currentColor !important; }
+body.cw-canvas-themed .ic-app-header__menu-list-item :is(a, button) { background: transparent !important; color: var(--cw-nav-ink, #1a2c3d) !important; }
+body.cw-canvas-themed .ic-app-header__menu-list-item :is(a, button):is(:hover, :focus-visible, [aria-current="page"]),
+body.cw-canvas-themed .ic-app-header__menu-list-item--active :is(a, button) {
+  background: var(--cw-nav-highlight, rgba(26, 44, 61, .12)) !important;
+  color: var(--cw-nav-ink, #1a2c3d) !important;
+}
 body.cw-canvas-themed {
   --cw-canvas-surface: var(--cw-canvas-background);
   --cw-canvas-raised: var(--cw-canvas-background);
@@ -368,6 +387,20 @@ body.cw-canvas-themed :is(#content, #right-side, #breadcrumbs) :is(.Button:not(.
 body.cw-canvas-themed :is(#content, #right-side, #breadcrumbs) :is(.Button.Button--primary, .btn.btn-primary):hover {
   background: var(--cw-canvas-background) !important;
   color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed .module-sequence-footer-content {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-control-outline) !important;
+}
+body.cw-canvas-themed :is(.module-sequence-footer-button--previous, .module-sequence-footer-button--next) a {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-link) !important;
+  border-color: var(--cw-control-outline) !important;
+}
+body.cw-canvas-themed :is(.module-sequence-footer-button--previous, .module-sequence-footer-button--next) a:is(:hover, :focus-visible) {
+  border-color: var(--cw-canvas-link) !important;
+  outline-color: var(--cw-canvas-link) !important;
 }
 body.cw-canvas-themed :is(#content, #right-side, #breadcrumbs) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select, [role="textbox"]) {
   background-color: var(--cw-canvas-background) !important;

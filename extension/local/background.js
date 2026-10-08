@@ -18,7 +18,7 @@ async function schoolData() {
   const saved = await chrome.storage.local.get("cwLocalSchools");
   return saved.cwLocalSchools && typeof saved.cwLocalSchools === "object" ? saved.cwLocalSchools : {};
 }
-async function addSchool(origin) {
+async function registerSchoolScripts(origin) {
   if (!validOrigin(origin)) throw new Error("Enter a valid HTTPS Canvas domain.");
   if (!await chrome.permissions.contains({ origins: [`${origin}/*`] })) throw new Error("Allow access to this Canvas domain first.");
   const [main, frame] = ids(origin);
@@ -28,10 +28,21 @@ async function addSchool(origin) {
     { id: frame, matches: [`${origin}/*`], allFrames: true, matchOriginAsFallback: true, js: ["appearance-frame.js"], css: ["appearance-frame.css"], runAt: "document_idle", persistAcrossSessions: true }
   ].filter(script => !existing.has(script.id));
   if (registrations.length) await chrome.scripting.registerContentScripts(registrations);
+}
+async function addSchool(origin) {
+  await registerSchoolScripts(origin);
   const schools = await schoolData();
   schools[origin] ||= { courses: [], styles: {} };
   await chrome.storage.local.set({ cwLocalSchools: schools });
   return { origins: Object.keys(schools).sort() };
+}
+
+async function restoreSchoolScripts() {
+  const schools = await schoolData();
+  for (const origin of Object.keys(schools)) {
+    try { await registerSchoolScripts(origin); }
+    catch { /* The permission may have been revoked; the next side-panel connection repairs it. */ }
+  }
 }
 async function forgetSchool(origin) {
   const registered = new Set((await chrome.scripting.getRegisteredContentScripts()).map(script => script.id));
@@ -121,3 +132,5 @@ chrome.permissions.onRemoved.addListener(({ origins = [] }) => {
     if (validOrigin(origin)) forgetSchool(origin).catch(() => {});
   }
 });
+chrome.runtime.onStartup?.addListener(() => { restoreSchoolScripts().catch(() => {}); });
+chrome.runtime.onInstalled?.addListener(() => { restoreSchoolScripts().catch(() => {}); });
