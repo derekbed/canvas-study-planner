@@ -14,7 +14,7 @@ This document applies only to the generated local edition in `extension/local-re
 
 Coursewise adds appearance settings and course organization tools to the Canvas sites you connect. Choose light, dark, or system appearance; customize course colors and pictures; see current Canvas grades and upcoming deadlines; review course health and announcements; and mark assignments as read in a local organizer. Coursewise uses your existing Canvas sign-in. It does not submit assignments, change grades, send Canvas data to a Coursewise server, or use AI. Connect a school by entering its HTTPS Canvas address in the side panel and approving Chrome's request for that exact domain. You can disconnect a school at any time.
 
-**Support:** `canvascoursewise@proton.me`. Add the public GitHub Pages URL as the support URL after Pages is deployed.
+**Support:** `canvascoursewise@proton.me`. Public policy and support contact: `https://derekbed.github.io/canvas-study-planner/`.
 
 ## Privacy dashboard notes
 
@@ -25,11 +25,11 @@ Coursewise adds appearance settings and course organization tools to the Canvas 
 - **Remote code:** None. All executable JavaScript is included in the extension package. Canvas API responses are data, not executable code.
 - **Data handling:** The extension processes Canvas course names, grades, assignments, announcements, and relevant Canvas URLs in the browser. Course names and appearance choices are stored locally; grade and announcement details stay in page memory. The extension does not transfer Canvas data to a Coursewise server or third-party analytics/advertising service. Canvas requests use the student's existing Canvas session to the connected school domain.
 - **Limited use:** Certify only after confirming the final package and public privacy policy match these practices. Treat Canvas data and website content as user data in the dashboard declarations; do not mark the extension as handling no user data.
-- **Privacy-policy URL:** `https://derekbed.github.io/canvas-study-planner/` after GitHub Pages is deployed. Confirm the final URL in the Pages deployment and use the public policy with the support contact, collection/use/storage/deletion details, and Limited Use disclosure. The bundled `privacy.html` is an in-extension copy, not the dashboard URL.
+- **Privacy-policy URL:** `https://derekbed.github.io/canvas-study-planner/` (deployed and verified October 7, 2026). Use this public policy in the dashboard. The bundled `privacy.html` is an in-extension copy, not the dashboard URL.
 
 ## Release gates
 
-1. Confirm the GitHub repository owner/operator name, monitored support email, and deployed public HTTPS privacy-policy URL. Review the policy and listing for applicable student-data requirements.
+1. Confirm the operator name and that `canvascoursewise@proton.me` is monitored. Review the policy and listing for applicable student-data requirements. The public HTTPS privacy-policy URL is live.
 2. Capture at least one real, appropriately redacted Canvas screenshot at the dimensions accepted by the dashboard. Do not use fabricated course data or reveal a student's private grades in the listing.
 3. Test with signed-in Canvas accounts on several deployments, including an `instructure.com` subdomain and a school custom domain. Verify add, reload, appearance, grades, deadlines, announcements, read-state, disconnect, and permission denial/revocation.
 4. Complete keyboard, zoom, and screen-reader checks of the side panel and injected Canvas UI. Fix failures found.
