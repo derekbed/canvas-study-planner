@@ -51,7 +51,10 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    optimizeDeps: { exclude: ["pdfjs-dist"] },
     server: {
+      // The unpacked local extension has a generated chrome-extension:// origin.
+      cors: { origin: [/^chrome-extension:\/\/fjflmeaiboafcffacfmlaopangaedjho$/, /^http:\/\/localhost(?::\d+)?$/, /^http:\/\/127\.0\.0\.1(?::\d+)?$/] },
       ...(managedLinux ? { host: "0.0.0.0", allowedHosts: ["terminal.local"] } : {}),
       ...(isCodexSeatbeltSandbox ? { watch: { useFsEvents: false, usePolling: true } } : {}),
     },

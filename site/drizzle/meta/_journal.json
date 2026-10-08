@@ -8,6 +8,41 @@
       "when": 1790635304710,
       "tag": "0000_natural_alice",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791085016062,
+      "tag": "0001_noisy_owl",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791310474611,
+      "tag": "0002_slim_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791316890006,
+      "tag": "0003_cuddly_namora",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791317495095,
+      "tag": "0004_mysterious_shaman",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791420447431,
+      "tag": "0005_cooing_masque",
+      "breakpoints": true
     }
   ]
 }

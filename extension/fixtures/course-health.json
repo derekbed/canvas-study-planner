@@ -1,0 +1,12 @@
+{
+  "now": "2026-10-07T12:00:00Z",
+  "courseId": "123",
+  "sourceUpdatedAt": "2026-10-07T11:55:00Z",
+  "healthy": [],
+  "overdue": [{ "id": "1", "courseId": "123", "kind": "assignment", "title": "Response", "dueAt": "2026-10-06T12:00:00Z", "url": "https://canvas.upenn.edu/courses/123/assignments/1" }],
+  "clustered": [
+    { "id": "2", "courseId": "123", "kind": "assignment", "title": "Essay", "dueAt": "2026-10-08T12:00:00Z", "url": "https://canvas.upenn.edu/courses/123/assignments/2" },
+    { "id": "3", "courseId": "123", "kind": "assignment", "title": "Quiz", "dueAt": "2026-10-09T12:00:00Z", "url": "https://canvas.upenn.edu/courses/123/assignments/3" },
+    { "id": "4", "courseId": "123", "kind": "assignment", "title": "Lab", "dueAt": "2026-10-10T12:00:00Z", "url": "https://canvas.upenn.edu/courses/123/assignments/4" }
+  ]
+}

@@ -1,4 +1,5 @@
 import { bucket, cleanText, database, jsonError, now, userId } from "@/lib/server";
+import { extractMaterialText } from "@/lib/material-text";
 
 export async function POST(request: Request) {
   const user = userId(request); if (!user) return jsonError("Sign in first.", 401);
@@ -12,8 +13,9 @@ export async function POST(request: Request) {
   const course = await db.prepare("SELECT id FROM courses WHERE id=? AND user_id=?").bind(courseId, user).first();
   if (!course) return jsonError("Course not found.", 404);
   const id = crypto.randomUUID(), key = `${user}/${id}`;
-  let extracted = cleanText(form.get("extractedText"), 500_000);
-  if (!extracted && file.type.startsWith("text/")) extracted = (await file.text()).slice(0, 500_000);
+  let extracted: string;
+  try { extracted = await extractMaterialText(file, cleanText(form.get("extractedText"), 500_000)); }
+  catch { return jsonError("The PDF could not be read. Try a text PDF or upload extracted text.", 422); }
   try {
     await bucket().put(key, file.stream(), { httpMetadata: { contentType: file.type || "application/octet-stream" } });
     await db.prepare("INSERT INTO materials (id,user_id,course_id,name,kind,mime_type,r2_key,extracted_text,created_at) VALUES (?,?,?,?,?,?,?,?,?)")

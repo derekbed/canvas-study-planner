@@ -1,0 +1,12 @@
+"use client";
+import {useEffect,useRef,useState} from "react";
+import {toast} from "sonner";
+import {Button} from "@/components/ui/button";
+import type {Workspace} from "@/lib/client-types";
+export default function FocusTimer({data,onMutate}:{data:Workspace;onMutate:(a:string,p:Record<string,unknown>)=>Promise<void>}) {
+ const [minutes,setMinutes]=useState(25),[remaining,setRemaining]=useState(25*60),[end,setEnd]=useState<number|null>(null),[mode,setMode]=useState("focus"),[course,setCourse]=useState(""),[pending,setPending]=useState(false);
+ const session=useRef(crypto.randomUUID());
+ useEffect(()=>{if(!end)return;const tick=()=>{const left=Math.max(0,Math.ceil((end-Date.now())/1000));setRemaining(left);if(!left){setEnd(null);if(mode==="focus")setPending(true);toast.success(mode==="focus"?"Focus complete. Save your session and take a break.":"Break finished.");}};tick();const t=setInterval(tick,500);return()=>clearInterval(t);},[end,mode]);
+ const save=async()=>{try{await onMutate("focus:save",{id:session.current,courseId:course,minutes});setPending(false);session.current=crypto.randomUUID();setMode("break");setRemaining(5*60);}catch(e){toast.error(e instanceof Error?e.message:"Save failed. Try again.");}};
+ return <section className="content-panel focus-panel"><h3>Focus timer</h3><p>{mode==="focus"?"One task at a time":"Take a short break"}</p><label>Course<select value={course} disabled={!!end||pending} onChange={e=>setCourse(e.target.value)}><option value="">General study</option>{data.courses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Focus minutes<input type="number" min="5" max="90" value={minutes} disabled={!!end||pending||mode==="break"} onChange={e=>{const n=Math.max(5,Math.min(90,+e.target.value));setMinutes(n);setRemaining(n*60);}}/></label><output className="timer-value" aria-label="Time remaining">{Math.floor(remaining/60)}:{String(remaining%60).padStart(2,"0")}</output><div className="heading-actions">{pending?<Button onClick={save}>Save completed session</Button>:<Button onClick={()=>{if(end)setEnd(null);else if(remaining)setEnd(Date.now()+remaining*1000);else {setMode("focus");setRemaining(minutes*60);}}}>{end?"Pause":remaining?"Start":"New focus session"}</Button>}<Button variant="outline" onClick={()=>{setEnd(null);setMode("focus");setRemaining(minutes*60);setPending(false);session.current=crypto.randomUUID();}}>Reset</Button></div><small>Completed sessions are recorded when saved. Keep this workspace open; reloading resets the active timer.</small></section>;
+}

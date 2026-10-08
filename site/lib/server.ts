@@ -25,7 +25,12 @@ export function numberIn(value: unknown, min: number, max: number, fallback: num
 export async function ensureDemo(user: string) {
   const db = database();
   const row = await db.prepare("SELECT id,source FROM courses WHERE user_id = ? LIMIT 1").bind(user).first<{ id: string; source: string }>();
-  if (row) { if (row.source === "demo") await seedDemoScores(user); return; }
+  if (row) { await db.prepare("INSERT OR IGNORE INTO preferences (user_id,value) VALUES (?,?)").bind(user,'{"initialized":true}').run(); return; }
+  const initialized = await db.prepare("SELECT user_id FROM preferences WHERE user_id=?").bind(user).first();
+  if (initialized) return;
+  await db.prepare("INSERT OR IGNORE INTO preferences (user_id,value) VALUES (?,?)").bind(user,JSON.stringify({initialized:true})).run();
+  await db.prepare("INSERT OR IGNORE INTO settings (user_id,available_days,hours_per_week,reminder_hours) VALUES (?,?,?,?)").bind(user, "[1,2,3,4,5]", 8, 24).run();
+  return;
   const today = new Date(); const monday = new Date(today);
   monday.setDate(today.getDate() - ((today.getDay() + 6) % 7)); monday.setHours(12, 0, 0, 0);
   const date = (day: number, hour = 23) => { const d = new Date(monday); d.setDate(monday.getDate() + day); d.setHours(hour, 59, 0, 0); return d.toISOString(); };
@@ -80,5 +85,12 @@ export async function workspace(user: string) {
     db.prepare("SELECT * FROM settings WHERE user_id = ?").bind(user).first<Settings>(),
     db.prepare("SELECT base_url,last_sync_at FROM canvas_connections WHERE user_id = ?").bind(user).first(),
   ]);
-  return { courses: courses.results, events: events.results, materials: materials.results, blocks: blocks.results, settings, connection, aiAvailable: Boolean(setting("OPENAI_API_KEY")), canvasAvailable: Boolean(setting("CANVAS_BASE_URL") && setting("CANVAS_CLIENT_ID") && setting("CANVAS_CLIENT_SECRET") && setting("TOKEN_ENCRYPTION_KEY")) };
+  const [prefs, calendarImport, cards, focusSessions, gradeHistory] = await Promise.all([
+    db.prepare("SELECT value FROM preferences WHERE user_id=?").bind(user).first<{value:string}>(),
+    db.prepare("SELECT last_import_at,summary FROM calendar_imports WHERE user_id=?").bind(user).first(),
+    db.prepare("SELECT * FROM flashcards WHERE user_id=? ORDER BY due_at").bind(user).all(),
+    db.prepare("SELECT * FROM focus_sessions WHERE user_id=? ORDER BY completed_at DESC").bind(user).all(),
+    db.prepare("SELECT course_id,grade,recorded_at FROM grade_history WHERE user_id=? ORDER BY recorded_at").bind(user).all(),
+  ]);
+  return { preferences: JSON.parse(prefs?.value || "{}"), calendarImport, cards:cards.results, focusSessions:focusSessions.results, gradeHistory:gradeHistory.results, courses: courses.results, events: events.results, materials: materials.results, blocks: blocks.results, settings, connection, aiAvailable: Boolean(setting("OPENAI_API_KEY")), canvasAvailable: Boolean(setting("CANVAS_BASE_URL") && setting("CANVAS_CLIENT_ID") && setting("CANVAS_CLIENT_SECRET") && setting("TOKEN_ENCRYPTION_KEY")) };
 }

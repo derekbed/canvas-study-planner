@@ -1,0 +1,540 @@
+/* Shared appearance controls live in a modal, independently of the organizer. */
+.cw-appearance-backdrop {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 24px;
+  border: 0;
+  background: transparent;
+  overflow: auto;
+}
+.cw-appearance-backdrop[open] { display: grid; place-items: center; }
+.cw-appearance-backdrop::backdrop { background: rgb(8 17 28 / 55%); }
+.cw-appearance-dialog {
+  --cw-ink: #182c3e;
+  --cw-muted: #5e7284;
+  --cw-line: #d8e3e9;
+  --cw-teal: #087b72;
+  --cw-dialog-surface: #fff;
+  --cw-dialog-field: #f6f9fb;
+  box-sizing: border-box;
+  display: grid;
+  gap: 22px;
+  width: min(100%, 580px);
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  padding: 26px;
+  border: 1px solid var(--cw-line);
+  border-radius: 20px;
+  background: var(--cw-dialog-surface);
+  color: var(--cw-ink);
+  box-shadow: 0 24px 80px #0004;
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.cw-appearance-dialog * { box-sizing: border-box; }
+.cw-appearance-dialog [hidden] { display: none !important; }
+.cw-appearance-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.cw-appearance-dialog h2 { margin: 0; color: var(--cw-ink); font-size: 23px; line-height: 1.3; }
+.cw-appearance-dialog p { margin: 0; }
+.cw-appearance-dialog button, .cw-appearance-dialog input, .cw-appearance-dialog select { font: inherit; }
+.cw-appearance-dialog button { cursor: pointer; }
+.cw-appearance-dialog :is(button, input, select):focus-visible { outline: 3px solid var(--cw-teal); outline-offset: 3px; }
+.cw-appearance-dialog :disabled { opacity: .6; cursor: wait; }
+.cw-appearance-close {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--cw-line);
+  border-radius: 50%;
+  background: var(--cw-dialog-field);
+  color: var(--cw-ink);
+  font-size: 26px !important;
+  line-height: 1 !important;
+}
+.cw-appearance-field, .cw-appearance-light-options, .cw-appearance-courses, .cw-appearance-course-controls { display: grid; gap: 10px; margin: 0; }
+.cw-appearance-field { font-weight: 650; }
+.cw-appearance-courses { border-top: 1px solid var(--cw-line); padding-top: 20px; }
+.cw-appearance-dialog select {
+  width: 100%;
+  height: auto;
+  min-height: 42px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--cw-line);
+  border-radius: 9px;
+  background: var(--cw-dialog-field);
+  color: var(--cw-ink);
+  font-weight: 400;
+}
+.cw-appearance-dialog .cw-hub__appearance-help { color: var(--cw-muted); font-size: 13px; }
+.cw-appearance-dialog :is(.cw-hub__swatch, .cw-hub__course-swatch) { padding: 8px 12px; color: #182c3e; font-size: 13px; }
+.cw-appearance-dialog input[type="color"] { width: 40px; height: 36px; padding: 3px; border: 1px solid var(--cw-line); border-radius: 7px; background: var(--cw-dialog-field); }
+.cw-appearance-upload { display: grid; gap: 8px; font-weight: 650; }
+.cw-appearance-upload input { width: 100%; color: var(--cw-muted); font-weight: 400; }
+.cw-appearance-upload input::file-selector-button, .cw-appearance-secondary { padding: 8px 12px; border: 1px solid var(--cw-line); border-radius: 8px; background: var(--cw-dialog-field); color: var(--cw-ink); cursor: pointer; }
+.cw-appearance-upload input::file-selector-button { margin-right: 10px; }
+.cw-appearance-preview { width: 100%; max-height: 170px; object-fit: cover; border-radius: 10px; }
+.cw-appearance-secondary { justify-self: start; }
+.cw-appearance-dark-note { padding: 12px 14px; border-radius: 10px; background: var(--cw-dialog-field); color: var(--cw-muted); }
+.cw-appearance-status { color: var(--cw-muted); font-size: 13px; }
+.cw-appearance-status:empty { display: none; }
+body:has(.cw-appearance-backdrop[open]) { overflow: hidden; }
+@media (max-width: 600px) {
+  .cw-appearance-backdrop { padding: 12px; }
+  .cw-appearance-dialog { padding: 20px; max-height: calc(100dvh - 24px); }
+}
+
+/* A single fixed dark palette; light-mode custom colors stay saved separately. */
+body.cw-canvas-themed { color-scheme: light; }
+body.cw-canvas-dark {
+  color-scheme: dark;
+  --cw-dark-surface: #1b2838;
+  --cw-dark-raised: #243447;
+  --cw-dark-line: #718398;
+  --cw-dark-ink: #f5f7fa;
+  --cw-dark-muted: #b3c2d1;
+  --cw-dark-accent: #94dbd2;
+  --ic-brand-font-color-dark: #f5f7fa;
+  --ic-brand-font-color-dark-lightened-15: #b3c2d1;
+  --ic-link-color: #a8d3ff;
+  --ic-link-color-darkened-10: #cee6ff;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark :is(#content, #right-side, #breadcrumbs, #footer, #section-tabs) { color: var(--cw-dark-ink); }
+body.cw-canvas-dark :is(#content, #right-side, #breadcrumbs, #footer, #section-tabs) :is(h1, h2, h3, h4, h5, h6) { color: var(--cw-dark-ink); }
+body.cw-canvas-dark :is(#content, #right-side, #breadcrumbs, #footer, #section-tabs) a { color: #a8d3ff; }
+body.cw-canvas-dark :is(.ic-DashboardCard, .ic-DashboardCard__header_content, .ic-DashboardCard__action-container, .ic-DashboardCard__action-layout, .ic-Action-header, .header-bar, .item-group-container, .item-group-condensed, .ig-header, .ig-row, .ig-details, .module-item-title, .discussion-topic, .discussion-entry, .entry-content, .message-list, .ic-Table, .ic-Table th, .ic-Table td, .summary, .event-details, .ui-dialog, .ui-dialog-titlebar, .ui-widget-content, .ui-widget-header) {
+  background-color: var(--cw-dark-surface) !important;
+  color: var(--cw-dark-ink) !important;
+  border-color: var(--cw-dark-line) !important;
+}
+body.cw-canvas-dark :is(.ic-DashboardCard__header-title, .ic-DashboardCard__header-subtitle, .ic-DashboardCard__header-term, .ic-DashboardCard__action, .ic-DashboardCard__action svg) { color: var(--cw-dark-ink) !important; }
+body.cw-canvas-dark :is(.ic-Dashboard-header, #breadcrumbs, #footer, #section-tabs li, hr) { border-color: var(--cw-dark-line) !important; }
+body.cw-canvas-dark :is(.Button, .btn, .ui-button) { background: var(--cw-dark-raised) !important; color: var(--cw-dark-ink) !important; border-color: var(--cw-dark-line) !important; text-shadow: none; }
+body.cw-canvas-dark :is(.Button--primary, .btn-primary) { background: #23655e !important; color: #fff !important; }
+body.cw-canvas-dark :is(#content, #right-side) :is(input:not([type="color"]):not([type="checkbox"]):not([type="radio"]), textarea, select) { background-color: var(--cw-dark-surface); color: var(--cw-dark-ink); border-color: var(--cw-dark-line); }
+body.cw-canvas-dark :is([role="menu"], [role="listbox"], [role="menu"] ul, [role="menu"] li) { background: var(--cw-dark-surface) !important; color: var(--cw-dark-ink) !important; border-color: var(--cw-dark-line) !important; }
+body.cw-canvas-dark :is([role^="menuitem"], [role="option"]) { background: var(--cw-dark-surface) !important; color: var(--cw-dark-ink) !important; }
+body.cw-canvas-dark :is([role^="menuitem"], [role="option"]) :is(span, svg) { background-color: transparent !important; color: inherit !important; }
+body.cw-canvas-dark :is([role^="menuitem"], [role="option"]):is(:hover, :focus, [aria-selected="true"]) { background: var(--cw-dark-raised) !important; }
+/* In Dashboard Options, only the hovered row gets a fill. Canvas otherwise
+   leaves a mouse-focused row shaded even after the pointer moves away. */
+body.cw-canvas-themed [role="menu"]:has([data-cw-horizontal-menu-item]) [role^="menuitem"]:focus:not(:hover) {
+  background: transparent !important;
+  color: inherit !important;
+}
+body.cw-canvas-themed [role="menu"]:has([data-cw-horizontal-menu-item]) [role^="menuitem"]:focus-visible:not(:hover) {
+  outline: 2px solid currentColor !important;
+  outline-offset: -2px;
+}
+body.cw-canvas-dark [role="menu"]:has([data-cw-horizontal-menu-item]) [role^="menuitem"]:focus-visible:not(:hover) {
+  outline-color: var(--cw-dark-accent) !important;
+}
+
+/* Global navigation trays use the same selected background on every Canvas page.
+   Theme their portal wrapper too, so scrolling never exposes Canvas's white surface. */
+body.cw-canvas-themed :has(> [role="dialog"]):has(.navigation-tray-container),
+body.cw-canvas-themed [role="dialog"]:has(.navigation-tray-container),
+body.cw-canvas-themed .navigation-tray-container {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed .navigation-tray-container :is(h1, h2, h3, p, li, div, span) {
+  color: inherit;
+}
+body.cw-canvas-themed .navigation-tray-container :is(a, a div, a span) {
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed .navigation-tray-container li > div,
+body.cw-canvas-themed .navigation-tray-container .tray-with-space-for-global-nav > div > div:last-child {
+  color: var(--cw-canvas-muted) !important;
+}
+body.cw-canvas-themed .navigation-tray-container hr { border-color: var(--cw-canvas-border) !important; }
+body.cw-canvas-themed .navigation-tray-container button {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed .navigation-tray-container button :is(span, svg, path) { color: var(--cw-canvas-ink) !important; }
+body.cw-canvas-themed .navigation-tray-container button :is(svg, path) { fill: currentColor !important; }
+body.cw-canvas-themed .navigation-tray-container :is(a, button):focus-visible {
+  outline: 2px solid var(--cw-canvas-link) !important;
+  outline-offset: 2px;
+}
+
+body.cw-canvas-dark :is(.cw-hub, #cw-canvas-app, .cw-appearance-dialog) {
+  --cw-ink: var(--cw-dark-ink);
+  --cw-muted: var(--cw-dark-muted);
+  --cw-line: var(--cw-dark-line);
+  --cw-teal: var(--cw-dark-accent);
+  --cw-green: var(--cw-dark-accent);
+  --cw-soft: var(--cw-dark-raised);
+  --cw-dialog-surface: var(--cw-dark-surface);
+  --cw-dialog-field: var(--cw-dark-raised);
+}
+body.cw-canvas-dark .cw-hub { background: var(--cw-dark-surface); border-color: var(--cw-dark-line); }
+body.cw-canvas-dark :is(.cw-hub__panel, .cw-hub__item, .cw-hub__empty, .cw-hub__sort, .cw-hub__course-links, .cw-hub__more, .cw-hub__read-toggle) { background: var(--cw-dark-surface); color: var(--cw-dark-ink); border-color: var(--cw-dark-line); }
+body.cw-canvas-dark :is(.cw-hub__space, .cw-hub__date, .cw-hub__status, .cw-hub__undo, .cw-hub__check, .cw-card-due, .cw-card-grade) { background: var(--cw-dark-raised); color: var(--cw-dark-ink); border-color: var(--cw-dark-line); }
+body.cw-canvas-dark .cw-hub__space[aria-selected="true"] { border-color: var(--cw-dark-accent); box-shadow: 0 0 0 1px var(--cw-dark-accent); }
+body.cw-canvas-dark :is(.cw-hub__panel-kicker, .cw-hub__item-tag, .cw-hub__undo button, .cw-hub__check, .cw-card-grade) { color: var(--cw-dark-accent); }
+body.cw-canvas-dark :is(.cw-hub__scope, .cw-hub__points, .cw-hub__item-meta, .cw-hub__privacy, .cw-hub__empty p, .cw-card-due__label, .cw-card-due__when, .cw-card-grade[data-state="unavailable"]) { color: var(--cw-dark-muted); }
+body.cw-canvas-dark .cw-hub__item-tag.is-overdue, body.cw-canvas-dark .cw-hub__warning { color: #ffb6a9; }
+body.cw-canvas-dark :is(.cw-hub__check, .cw-hub__more, .cw-hub__read-toggle):hover { background: #31485c; }
+body.cw-canvas-dark .cw-rail-collapse, html:has(body.cw-canvas-dark) .cw-rail-reopen { background: #1b2838; color: #f5f7fa; border-color: #3b4e63; }
+body.cw-canvas-dark #cw-canvas-app :is(.cw-top, .cw-sidebar, .cw-rail, .cw-panel, .cw-card, .cw-input, .cw-chip, .cw-select, textarea) { background: var(--cw-dark-surface); color: var(--cw-dark-ink); border-color: var(--cw-dark-line); }
+body.cw-canvas-dark #cw-canvas-app :is(.cw-status, .cw-sidebar button.active, .cw-sidebar button:hover) { background: var(--cw-dark-raised); color: var(--cw-dark-accent); }
+body.cw-canvas-dark #cw-canvas-app .cw-text-button { color: #a8d3ff; }
+body.cw-canvas-dark #cw-canvas-app .cw-chip.active { background: #23655e; color: #fff; }
+body.cw-canvas-dark #cw-canvas-app .cw-course-swatch { color: #182c3e; }
+
+/* Uploaded images cover only the course header; menus and grade badges stay above. */
+.cw-custom-course-header { position: relative; isolation: isolate; overflow: hidden; opacity: 1 !important; }
+.cw-custom-course-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 1; border-radius: inherit; }
+.cw-custom-course-header :is(.ic-DashboardCard__header-button, .ic-DashboardCard__header-button-bg, .cw-card-grade) { z-index: 3; }
+body.cw-horizontal-view .ic-DashboardCard .ic-DashboardCard__header > .ic-DashboardCard__header_image.cw-custom-course-header {
+  grid-column: 1; grid-row: 1; width: 100%; height: 100%; min-height: 0; border-radius: 0;
+}
+
+/* Let Canvas surfaces follow the page color without changing course event colors. */
+body.cw-canvas-themed {
+  --cw-canvas-surface: var(--cw-canvas-background);
+  --cw-canvas-raised: var(--cw-canvas-background);
+  --cw-canvas-border: color-mix(in srgb, var(--cw-canvas-ink) 40%, var(--cw-canvas-background));
+  --cw-control-outline: color-mix(in srgb, var(--cw-canvas-ink) 54%, var(--cw-canvas-background));
+  --cw-calendar-grid-border: #8b9099;
+}
+body.cw-canvas-dark {
+  --cw-canvas-surface: var(--cw-canvas-background);
+  --cw-canvas-raised: var(--cw-canvas-background);
+  --cw-canvas-border: color-mix(in srgb, var(--cw-canvas-ink) 40%, var(--cw-canvas-background));
+  --cw-calendar-grid-border: #77808a;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) :is(.ic-DashboardCard, .ic-DashboardCard__header_content) {
+  background-color: color-mix(in srgb, var(--cw-canvas-background) 65%, var(--cw-nav-background) 35%) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) :is(#content > h1, .ic-Dashboard-header h1, #dashboard_header_container h1, #right-side > h2, #footer) {
+  color: var(--cw-canvas-ink) !important;
+}
+/* Canvas uses spans for the Dashboard heading and nests Recent Feedback in a panel. */
+body.cw-canvas-themed :is(#dashboard_header_container [data-cid="Heading"], #dashboard_header_container .hidden-phone, #DashboardOptionsMenu_Container button, #DashboardOptionsMenu_Container svg, #DashboardOptionsMenu_Container path, #right-side .recent_feedback h2) {
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed #DashboardOptionsMenu_Container svg,
+body.cw-canvas-themed #DashboardOptionsMenu_Container path {
+  fill: currentColor !important;
+}
+body.cw-canvas-themed #right-side .recent_feedback :is(a, .recent_feedback_title, .more_link) {
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed #right-side .recent_feedback :is(.event-details__context, .event-details p, .event-details strong) {
+  color: var(--cw-canvas-muted) !important;
+}
+body.cw-canvas-themed #right-side .recent_feedback .event-details::after {
+  background: linear-gradient(to right, transparent, var(--cw-canvas-background) 80%) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) :is(.ic-Action-header, .header-bar) :is(h1, h2, h3) {
+  color: var(--cw-surface-ink) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) #footer a { color: var(--cw-canvas-link) !important; }
+body.cw-canvas-themed #breadcrumbs {
+  background: var(--cw-canvas-background) !important;
+}
+body.cw-canvas-themed #content .submission-details-container {
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed #content .submission-details-comments :is(.comments, [style*="background-color: #fff"]) {
+  background-color: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed #content :is(.submission-details-header, .submission-details-header__heading, .submission-details-header__grade-summary, .submission-details-comments) {
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed #content .tox-tinymce :is(.tox-editor-header, .tox-menubar, .tox-toolbar, .tox-toolbar__primary, .tox-toolbar__group, .tox-statusbar, .tox-edit-area, .tox-edit-area__iframe, .tox-sidebar-wrap) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed #content .tox-tinymce :is(.tox-mbtn, .tox-tbtn, .tox-statusbar__path-item, .tox-statusbar__wordcount) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed #content .tox-tinymce :is(.tox-mbtn, .tox-tbtn):hover {
+  background: color-mix(in srgb, var(--cw-nav-background) 18%, var(--cw-canvas-background)) !important;
+}
+body.cw-canvas-themed #content .tox-tinymce :is(.tox-mbtn, .tox-tbtn) svg {
+  fill: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed #content .tox-tinymce,
+body.cw-canvas-themed #content .tox-tinymce :is(.tox-editor-container, .tox-sidebar-wrap, .tox-edit-area) {
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed #content .canvas-rce__skins--root {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed #content [class*="textInput__facade"] {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed #submit_assignment_tabs .ui-tabs-active {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed #submit_assignment_tabs .ui-tabs-active a {
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed [aria-label="Assignment Weights"] .summary :is(th, td) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed #grade-summary-content #assignments { overflow-x: auto !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary {
+  width: 100% !important;
+  min-width: 620px !important;
+  table-layout: fixed !important;
+}
+body.cw-canvas-themed #grade-summary-content #grades_summary :is(th, td) { padding-right: 6px !important; padding-left: 6px !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(1) { width: 23% !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(2) { width: 17% !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(3) { width: 10% !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(4) { width: 10% !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(5) { width: 13% !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(6) { width: 4% !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(7) { width: 19% !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(8) { width: 4% !important; }
+body.cw-canvas-themed #grade-summary-content #grades_summary tbody tr[id^="submission_group"] td:nth-child(7) { white-space: normal !important; }
+body.cw-canvas-themed:not(.cw-canvas-dark) .ic-DashboardCard {
+  color: var(--cw-card-ink) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) .ic-DashboardCard :is(.ic-DashboardCard__header-title, .ic-DashboardCard__header-title *, .ic-DashboardCard__header-subtitle, .ic-DashboardCard__header-subtitle *, .ic-DashboardCard__header-term, .ic-DashboardCard__header-term *, .ic-DashboardCard__action, .ic-DashboardCard__action svg) {
+  color: var(--cw-card-ink) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) .ic-DashboardCard .cw-card-due {
+  background-color: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) .ic-DashboardCard .cw-card-due :is(.cw-card-due__label, .cw-card-due__when) {
+  color: var(--cw-canvas-muted) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) .ic-DashboardCard .cw-card-due a {
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed :is(#section-tabs, .ic-Action-header, .header-bar, .item-group-container, .ic-Table, .ui-widget-content, .ui-widget-header) {
+  background-color: var(--cw-canvas-surface) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed :is(#content, #right-side, #section-tabs) :is(hr, .ic-Action-header, .header-bar, .right-side-list li, .events_list .h2, .stream-category, .course_home_content li, .ic-Table th, .ic-Table td) {
+  border-color: var(--cw-canvas-border) !important;
+}
+/* Keep modules and controls flush with the page; their outlines provide the shape. */
+body.cw-canvas-themed #content :is(.item-group-container, .item-group-condensed, .ig-header, .ig-row, .ig-details, .module-item-title, .context_module, .context_module_item),
+body.cw-canvas-themed #right-side :is(.event-details, .summary, .todo-list, .to-do-list) {
+  background-color: var(--cw-canvas-background) !important;
+  border-color: var(--cw-control-outline) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed #content :is(.ig-row, .context_module_item):hover {
+  background-color: var(--cw-canvas-background) !important;
+  border-color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed #content :is(.item-group-container, .item-group-condensed, .ig-header, .ig-row, .ig-details, .module-item-title, .context_module, .context_module_item) a {
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed :is(#content, #right-side, #breadcrumbs) :is(.Button:not(.Button--link), .btn, .ui-button, input[type="button"], input[type="submit"], input[type="reset"]) {
+  background: var(--cw-canvas-background) !important;
+  border: 1px solid var(--cw-control-outline) !important;
+  color: var(--cw-canvas-ink) !important;
+  text-shadow: none !important;
+}
+body.cw-canvas-themed :is(#content, #right-side, #breadcrumbs) :is(.Button.Button--primary, .btn.btn-primary) {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-canvas-link) !important;
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed :is(#content, #right-side, #breadcrumbs) :is(.Button:not(.Button--link), .btn, .ui-button):hover {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed :is(#content, #right-side, #breadcrumbs) :is(.Button.Button--primary, .btn.btn-primary):hover {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed :is(#content, #right-side, #breadcrumbs) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select, [role="textbox"]) {
+  background-color: var(--cw-canvas-background) !important;
+  border-color: var(--cw-control-outline) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed :is(#content, #right-side, #breadcrumbs) :is(input, textarea)::placeholder {
+  color: var(--cw-canvas-muted) !important;
+  opacity: 1;
+}
+body.cw-canvas-themed .fc :is(.fc-view, .fc-day, .fc-day-grid, .fc-bg, .fc-widget-content, .fc-widget-header, .fc-day-header, .fc-popover, .fc-scroller, .fc-scrollgrid, td, th),
+body.cw-canvas-themed :is(#calendar-app, #minical, .mini_calendar, .mini-calendar, #calendar-sidebar, .calendar-sidebar, #calendar-list, #calendar-list-holder, .calendar-list, .calendar-list-holder, .calendars-list, .calendar-header) {
+  background-color: var(--cw-canvas-surface) !important;
+  background-image: none !important;
+  border-color: var(--cw-calendar-grid-border) !important;
+}
+body.cw-canvas-themed .fc .fc-day.fc-today { background-color: color-mix(in srgb, var(--cw-nav-background) 25%, var(--cw-canvas-surface)) !important; }
+body.cw-canvas-themed .fc :is(.fc-day-number, .fc-day-header, .fc-toolbar h2) { color: var(--cw-surface-ink) !important; }
+body.cw-canvas-themed :is(#minical, #calendar-list-holder) {
+  color: var(--cw-surface-ink) !important;
+}
+body.cw-canvas-themed #minical :is(button, a, span),
+body.cw-canvas-themed #calendar-list-holder :is(button, a, span) {
+  color: var(--cw-surface-ink) !important;
+}
+body.cw-canvas-themed .fc .fc-button {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-control-outline) !important;
+  color: var(--cw-canvas-ink) !important;
+  text-shadow: none !important;
+}
+body.cw-canvas-themed .fc .fc-button:is(.fc-state-active, .fc-button-active) {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-canvas-link) !important;
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed #calendar_header :is(button, .Button, .btn, [role="tab"]) {
+  background-color: var(--cw-canvas-background) !important;
+  border-color: var(--cw-control-outline) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed #calendar_header :is([aria-selected="true"], .active, .selected) {
+  background-color: var(--cw-canvas-background) !important;
+  border-color: var(--cw-canvas-link) !important;
+  color: var(--cw-canvas-link) !important;
+}
+
+/* The embedded workspace starts after Canvas's left navigation. */
+body.cw-canvas-app-active { overflow-x: hidden; }
+body.cw-canvas-app-active #right-side-wrapper { display: none !important; }
+body.cw-canvas-app-active :is(#main, #wrapper, #not_right_side) {
+  box-sizing: border-box !important;
+  width: var(--cw-app-available-width, 100%) !important;
+  max-width: var(--cw-app-available-width, 100%) !important;
+  min-width: 0 !important;
+}
+body.cw-canvas-app-active #content-wrapper {
+  box-sizing: border-box !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+body.cw-canvas-app-active #content {
+  box-sizing: border-box !important;
+  width: var(--cw-app-available-width, 100%) !important;
+  max-width: var(--cw-app-available-width, 100%) !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+body.cw-canvas-app-active #cw-canvas-app { box-sizing: border-box; width: 100% !important; max-width: 100% !important; overflow-x: hidden; }
+body.cw-canvas-app-active #cw-canvas-app .cw-layout { width: 100%; max-width: 100%; min-width: 0; }
+body.cw-canvas-app-active #cw-canvas-app :is(.cw-top, .cw-sidebar, .cw-content, .cw-rail) { min-width: 0; }
+body.cw-canvas-app-active #cw-canvas-app .cw-top > div { min-width: 0; }
+body.cw-canvas-app-active #cw-canvas-app .cw-top-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+body.cw-canvas-app-active #cw-canvas-app .cw-rail { overflow-wrap: anywhere; }
+body.cw-canvas-app-active #cw-canvas-app h1:focus { outline: none; }
+
+/* The same page color fills the header and both rails. */
+body.cw-canvas-themed #cw-canvas-app {
+  --cw-line: var(--cw-canvas-border);
+  --cw-ink: var(--cw-canvas-ink);
+  --cw-muted: var(--cw-canvas-muted);
+  color: var(--cw-canvas-ink);
+}
+body.cw-canvas-themed #cw-canvas-app :is(.cw-top, .cw-sidebar, .cw-rail) {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed #cw-canvas-app :is(.cw-eyebrow, .cw-row a) {
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed #cw-canvas-app :is(.cw-panel, .cw-card) {
+  --cw-ink: var(--cw-surface-ink);
+  --cw-muted: var(--cw-surface-muted);
+}
+body.cw-canvas-themed #cw-canvas-app :is(.cw-panel, .cw-card) :is(.cw-eyebrow, .cw-row a) {
+  color: var(--cw-surface-link) !important;
+}
+body.cw-canvas-themed #cw-canvas-app :is(.cw-panel, .cw-card, .cw-status, .cw-input, .cw-select, textarea) {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-control-outline) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed #cw-canvas-app :is(.cw-primary, .cw-text-button, .cw-chip, .cw-sidebar button.active, .cw-sidebar button:hover) {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-canvas-link) !important;
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed #cw-canvas-app :is(.cw-primary, .cw-text-button, .cw-chip):hover {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-link) !important;
+}
+body.cw-canvas-themed #cw-canvas-app :is(.cw-sidebar button.active, .cw-chip.active),
+body.cw-canvas-themed #cw-canvas-app :is(.cw-sidebar button.active, .cw-chip.active):hover {
+  background: var(--cw-nav-background) !important;
+  border-color: var(--cw-nav-background) !important;
+  color: var(--cw-nav-ink) !important;
+}
+body.cw-canvas-themed #cw-canvas-app .cw-chip.active { box-shadow: none; }
+body.cw-canvas-themed #cw-canvas-app .cw-status { color: var(--cw-ink); }
+
+/* Shared controls and organizer surfaces follow the selected palette too. */
+body.cw-canvas-themed :is(.cw-hub, .cw-appearance-dialog) {
+  --cw-ink: var(--cw-canvas-ink);
+  --cw-muted: var(--cw-canvas-muted);
+  --cw-line: var(--cw-canvas-border);
+  --cw-teal: var(--cw-canvas-link);
+  --cw-soft: var(--cw-canvas-background);
+  --cw-dialog-surface: var(--cw-canvas-background);
+  --cw-dialog-field: var(--cw-canvas-background);
+  background: var(--cw-canvas-background);
+  border-color: var(--cw-canvas-border);
+  color: var(--cw-canvas-ink);
+}
+body.cw-canvas-themed :is(.cw-hub__panel, .cw-hub__item, .cw-hub__space, .cw-hub__empty, .cw-hub__date, .cw-hub__sort, .cw-hub__course-links, .cw-hub__more, .cw-hub__read-toggle, .cw-hub__check, .cw-hub__undo, .cw-rail-collapse, .cw-rail-reopen, .cw-card-grade) {
+  background: var(--cw-canvas-background);
+  color: var(--cw-canvas-ink);
+  border-color: var(--cw-canvas-border);
+}
+body.cw-canvas-themed .cw-hub__space { border-color: var(--cw-space-outline); }
+body.cw-canvas-themed .cw-hub__space[aria-selected="true"] {
+  border-color: var(--cw-space-outline);
+  box-shadow: 0 0 0 1px var(--cw-space-outline), 0 8px 20px #16374917;
+}
+body.cw-canvas-themed .cw-hub__progress {
+  background: conic-gradient(var(--cw-canvas-link) var(--cw-progress), var(--cw-control-outline) 0);
+  color: var(--cw-canvas-ink);
+}
+body.cw-canvas-themed .cw-hub__progress:before { background: var(--cw-canvas-background); }
+body.cw-canvas-themed :is(.cw-hub__course-toggle, .cw-hub__course-refresh) {
+  background: var(--cw-canvas-background);
+  border-color: var(--cw-control-outline);
+  color: var(--cw-canvas-link);
+}
+body.cw-canvas-themed :is(.cw-hub__course-name, .cw-hub__course-counts) { color: var(--cw-canvas-ink); }
+body.cw-canvas-themed :is(.cw-hub__course-title, .cw-hub__course-grade) { color: var(--cw-canvas-muted); }
+body.cw-canvas-themed :is(.cw-hub__panel-kicker, .cw-hub__item-tag, .cw-hub__check, .cw-hub__undo button) { color: var(--cw-canvas-link); }
+body.cw-canvas-themed :is([role="menu"], [role="listbox"], [role="menu"] ul, [role="menu"] li, [role^="menuitem"], [role="option"]) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed :is([role^="menuitem"], [role="option"]) :is(span, svg) { color: inherit !important; background: transparent !important; }
+body.cw-canvas-themed :is([role^="menuitem"], [role="option"]):is(:hover, :focus, [aria-selected="true"]) {
+  background: var(--cw-nav-background) !important;
+  color: var(--cw-nav-ink) !important;
+}
+body.cw-canvas-themed .navigation-tray-container label { color: var(--cw-canvas-ink) !important; }
+body.cw-canvas-themed .navigation-tray-container button span { background: transparent !important; }

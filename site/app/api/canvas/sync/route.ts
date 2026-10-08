@@ -4,5 +4,5 @@ import { jsonError, userId, workspace } from "@/lib/server";
 export async function POST(request: Request) {
   const user = userId(request); if (!user) return jsonError("Sign in first.", 401);
   try { await syncCanvas(user); return Response.json(await workspace(user)); }
-  catch (error) { console.error("Canvas sync failed", error); return jsonError(error instanceof Error ? error.message : "Canvas could not sync.", 503); }
+  catch { return jsonError("Canvas could not sync. Reconnect if access has expired, or try again later. Your manual courses and dates are kept.", 503); }
 }

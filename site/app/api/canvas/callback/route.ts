@@ -18,5 +18,5 @@ export async function GET(request: Request) {
     const response = Response.redirect(new URL("/?canvas=connected", request.url).toString(), 302);
     response.headers.append("Set-Cookie", "canvas_oauth_state=; HttpOnly; Secure; SameSite=Lax; Path=/api/canvas/callback; Max-Age=0");
     return response;
-  } catch (error) { console.error("Canvas callback failed", error); return Response.redirect(new URL("/?canvas=error", request.url).toString(), 302); }
+  } catch { return Response.redirect(new URL("/?canvas=error", request.url).toString(), 302); }
 }
