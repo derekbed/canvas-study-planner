@@ -4,6 +4,8 @@ Coursewise is a Canvas-connected study planner for high school and college stude
 
 The application lives in [site](./site).
 
+The local Chrome prototype lives in [extension](./extension). On Canvas, its organizer separates assignments, exams and quizzes, and announcements while showing course grades and next deadlines. It uses the signed-in student's Canvas session for read-only summaries; the Coursewise side panel sends page context to the local backend only when the student submits a question. See the extension README for setup and limitations.
+
 ## What works now
 
 - Week, month, and agenda calendar views with course filters and detailed assignment panels
@@ -39,3 +41,7 @@ Set `OPENAI_API_KEY` to activate study chat and generated materials. `OPENAI_MOD
 ## Before a public student launch
 
 This first deployment is an owner-private product preview. A public release needs student sign-in suitable for high school and college users, consent and data retention choices, institution onboarding, operational reminder delivery when the browser is closed, and review of textbook upload and AI data handling. Grade estimates depend on the work and grading rules available from Canvas; the UI identifies missing inputs.
+
+## Expanded study workspace
+
+The roadmap implementation adds a prioritized Today dashboard, import reconciliation and course matching, weighted grading categories, editable study windows and missed-session rescheduling, cited material study tools, syllabus date review, spaced repetition, focus sessions, weekly progress, and export/deletion controls. See the [feature and setup notes](./site/README.md#roadmap-update) for behavior and limits, and the [student launch plan](./site/PUBLIC_LAUNCH_PLAN.md) for requirements before broader release.

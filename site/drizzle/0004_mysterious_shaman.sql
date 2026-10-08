@@ -1,0 +1,1 @@
+ALTER TABLE `courses` ADD `image_url` text DEFAULT '' NOT NULL;

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coursewise</title><link rel="stylesheet" href="sidepanel.css"></head>
+<body><main>
+  <header><div><p class="eyebrow">Canvas bridge · local prototype</p><h1>Coursewise</h1></div><a href="http://localhost:5173/" id="workspace" target="_blank" rel="noopener">Full workspace ↗</a></header>
+  <section aria-labelledby="context-heading">
+    <div class="row"><h2 id="context-heading">Canvas context</h2><span id="freshness" class="status">Not captured</span></div>
+    <p id="course" class="course">Open a Canvas course page to begin.</p>
+    <p id="context-message" role="status"></p>
+    <div class="actions"><button id="refresh" type="button">Refresh Canvas context</button><button id="clear" type="button" class="quiet">Clear context</button></div>
+    <details id="preview"><summary>Exact page text to send</summary><dl id="fields"></dl></details>
+  </section>
+  <section aria-labelledby="ask-heading"><h2 id="ask-heading">Ask Coursewise</h2>
+    <p class="note">When you submit, the text shown above and your question go to local Coursewise and OpenAI. Nothing is sent on page navigation or refresh.</p>
+    <button id="new-chat" type="button" class="quiet">New conversation</button><div id="chat-history" aria-label="Conversation"></div>
+    <form id="ask-form"><label for="question">Your question</label><textarea id="question" rows="4" maxlength="2000" placeholder="What should I review before this assignment?"></textarea>
+    <button id="submit" type="submit">Ask Coursewise</button></form>
+    <p id="request-status" role="status" aria-live="polite"></p>
+    <div id="answer-box" hidden><h3>Answer</h3><p id="answer"></p><h3>Sources</h3><ul id="sources"></ul></div>
+  </section>
+  <section aria-labelledby="pair-heading"><h2 id="pair-heading">Local session</h2><p id="pair-status" role="status">Checking pairing…</p>
+    <div class="actions"><button id="pair" type="button">Pair with Coursewise</button><button id="finish" type="button" hidden>Finish pairing</button><button id="signout" type="button" class="quiet" hidden>Sign out</button></div>
+  </section>
+</main><script src="chat-format.js"></script><script src="sidepanel.js"></script></body></html>

@@ -68,25 +68,27 @@ export async function syncCanvas(user: string) {
   const db = database(); const created = now();
   const courses = (await canvasPages<CanvasCourse>(base, token, "/api/v1/courses?enrollment_state=active&include[]=total_scores&per_page=100", 3)).filter(c => c.id && c.name).slice(0, 30);
   if (!courses.length) throw new Error("No active Canvas courses were found.");
-  await db.batch([
-    db.prepare("DELETE FROM events WHERE user_id=? AND source='demo'").bind(user),
-    db.prepare("DELETE FROM courses WHERE user_id=? AND source='demo'").bind(user),
-  ]);
+
   let synced = 0;
+  const syncedCourses = new Map<string,string>();
   for (const course of courses) {
-    const courseId = `canvas-${base}-${course.id}`;
+    let courseId = `canvas-${user}-${base}-${course.id}`;
     const grade = course.enrollments?.find(e => e.type === "student")?.grades?.current_score ?? course.enrollments?.[0]?.grades?.current_score ?? null;
     const groups = await canvasPages<CanvasGroup>(base, token, `/api/v1/courses/${course.id}/assignment_groups?per_page=100`, 4);
     const groupMap = new Map(groups.map(g => [g.id, g.name]));
     const weights = Object.fromEntries(groups.filter(g => typeof g.group_weight === "number").map(g => [g.name, g.group_weight]));
-    await db.prepare("INSERT INTO courses (id,user_id,canvas_id,name,code,color,target_grade,current_grade,grade_weights,source,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,code=excluded.code,current_grade=excluded.current_grade,grade_weights=excluded.grade_weights")
+    await db.prepare("INSERT INTO courses (id,user_id,canvas_id,name,code,color,target_grade,current_grade,grade_weights,source,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,canvas_id) DO UPDATE SET name=excluded.name,code=excluded.code,current_grade=excluded.current_grade,grade_weights=excluded.grade_weights")
       .bind(courseId, user, String(course.id), course.name.slice(0,120), (course.course_code || "").slice(0,40), ["blue","violet","orange","teal","rose"][synced % 5], 90, grade, JSON.stringify(course.apply_assignment_group_weights ? weights : {}), "canvas", created).run();
+    const stored=await db.prepare("SELECT id FROM courses WHERE user_id=? AND canvas_id=?").bind(user,String(course.id)).first<{id:string}>();
+    if(stored)courseId=stored.id;
+    syncedCourses.set(String(course.id),courseId);
+    if(grade!=null)await db.prepare("INSERT INTO grade_history (id,user_id,course_id,grade,recorded_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(),user,courseId,grade,created).run();
     const assignments = await canvasPages<CanvasAssignment>(base, token, `/api/v1/courses/${course.id}/assignments?include[]=submission&per_page=100`, 12);
     const statements = assignments.filter(a => a.published !== false && a.due_at).map(a => {
       const submission = a.submission;
       const status = submission?.missing ? "missing" : submission?.submitted_at || submission?.workflow_state === "graded" ? "done" : "upcoming";
-      return db.prepare("INSERT INTO events (id,user_id,course_id,canvas_id,title,description,due_at,kind,points_possible,points_earned,status,source,url,estimated_minutes,grade_group,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,due_at=excluded.due_at,points_possible=excluded.points_possible,points_earned=excluded.points_earned,status=excluded.status,url=excluded.url,grade_group=excluded.grade_group")
-        .bind(`canvas-assignment-${base}-${a.id}`, user, courseId, String(a.id), a.name.slice(0,180), (a.description || "").slice(0,10000), a.due_at, "assignment", a.points_possible ?? null, submission?.score ?? null, status, "canvas", a.html_url || null, 60, groupMap.get(a.assignment_group_id || -1) || "", created);
+      return db.prepare("INSERT INTO events (id,user_id,course_id,canvas_id,title,description,due_at,kind,points_possible,points_earned,status,source,url,estimated_minutes,grade_group,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,canvas_id) DO UPDATE SET course_id=excluded.course_id,title=excluded.title,description=excluded.description,due_at=excluded.due_at,points_possible=excluded.points_possible,points_earned=excluded.points_earned,status=excluded.status,url=excluded.url,grade_group=excluded.grade_group")
+        .bind(`canvas-assignment-${user}-${base}-${a.id}`, user, courseId, String(a.id), a.name.slice(0,180), (a.description || "").slice(0,10000), a.due_at, "assignment", a.points_possible ?? null, submission?.score ?? null, status, "canvas", a.html_url || null, 60, groupMap.get(a.assignment_group_id || -1) || "", created);
     });
     for (let i = 0; i < statements.length; i += 80) await db.batch(statements.slice(i, i + 80));
     synced++;
@@ -98,9 +100,9 @@ export async function syncCanvas(user: string) {
     const entries = await canvasPages<CalendarEvent>(base, token, `/api/v1/calendar_events?type=${type}&${params}`, 20);
     const statements = entries.filter(e => e.start_at && e.title).map(e => {
       const match = e.context_code?.match(/^course_(\d+)$/);
-      const courseId = match ? `canvas-${base}-${match[1]}` : null;
-      return db.prepare("INSERT INTO events (id,user_id,course_id,canvas_id,title,description,due_at,kind,status,source,url,estimated_minutes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,due_at=excluded.due_at,url=excluded.url")
-        .bind(`canvas-calendar-${type}-${base}-${e.id}`, user, courseId, String(e.id), e.title.slice(0,180), (e.description || "").slice(0,10000), e.start_at, type === "assignment" ? "assignment" : "event", "upcoming", "canvas", e.html_url || null, 30, created);
+      const courseId = match ? syncedCourses.get(match[1]) || null : null;
+      return db.prepare("INSERT INTO events (id,user_id,course_id,canvas_id,title,description,due_at,kind,status,source,url,estimated_minutes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,canvas_id) DO UPDATE SET course_id=excluded.course_id,title=excluded.title,description=excluded.description,due_at=excluded.due_at,url=excluded.url")
+        .bind(`canvas-calendar-${user}-${type}-${base}-${e.id}`, user, courseId, `calendar:${e.id}`, e.title.slice(0,180), (e.description || "").slice(0,10000), e.start_at, type === "assignment" ? "assignment" : "event", "upcoming", "canvas", e.html_url || null, 30, created);
     });
     for (let i = 0; i < statements.length; i += 80) await db.batch(statements.slice(i, i + 80));
   }

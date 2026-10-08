@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // vinext checks origin hostnames before API route CORS runs.
+  allowedDevOrigins: ["fjflmeaiboafcffacfmlaopangaedjho"],
 };
 
 export default nextConfig;

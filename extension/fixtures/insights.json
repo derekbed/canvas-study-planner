@@ -1,0 +1,24 @@
+{
+  "courses": [
+    { "id": 123, "name": "Physics", "course_code": "PHYS 1230", "enrollments": [{ "type": "StudentEnrollment", "computed_current_score": 87.35, "computed_current_grade": "B+" }] },
+    { "id": 456, "name": "Writing", "course_code": "WRIT 101", "enrollments": [{ "type": "StudentEnrollment" }] }
+  ],
+  "enrollments": [
+    { "course_id": 456, "type": "StudentEnrollment", "grades": { "current_score": 92.5, "current_grade": "A-" } }
+  ],
+  "assignments": [
+    { "id": 9, "name": "Problem Set 4", "due_at": "2026-10-14T23:59:00Z", "points_possible": 100, "published": true, "submission": { "workflow_state": "unsubmitted" }, "html_url": "https://canvas.upenn.edu/courses/123/assignments/9" },
+    { "id": 8, "name": "Short quiz", "due_at": "2026-10-10T18:00:00Z", "points_possible": 20, "published": true, "submission": { "workflow_state": "unsubmitted" }, "html_url": "https://canvas.upenn.edu/courses/123/assignments/8" },
+    { "id": 7, "name": "Already submitted", "due_at": "2026-10-09T18:00:00Z", "published": true, "submission": { "workflow_state": "submitted" } },
+    { "id": 6, "name": "Private link", "due_at": "2026-10-11T18:00:00Z", "published": true, "html_url": "https://example.edu/steal" },
+    { "id": 5, "name": "Midterm Exam", "due_at": "2026-10-15T18:00:00Z", "published": true, "quiz_id": 35 },
+    { "id": 4, "name": "Writing response", "due_at": "2026-10-05T18:00:00Z", "published": true },
+    { "id": 3, "name": "Old task", "due_at": "2026-09-01T18:00:00Z", "published": true }
+  ],
+  "announcements": [
+    { "id": 81, "context_code": "course_123", "title": "Lecture room update", "posted_at": "2026-10-05T16:00:00Z", "html_url": "https://canvas.upenn.edu/courses/123/discussion_topics/81" },
+    { "id": 82, "context_code": "course_123", "title": "Read chapter 4", "posted_at": "2026-10-03T16:00:00Z", "html_url": "https://example.edu/redirect" },
+    { "id": 83, "context_code": "course_456", "title": "Other course", "posted_at": "2026-10-02T16:00:00Z" },
+    { "id": 84, "context_code": "course_123", "title": "Scheduled later", "posted_at": "2026-10-20T16:00:00Z" }
+  ]
+}

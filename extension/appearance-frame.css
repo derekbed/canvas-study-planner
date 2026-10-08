@@ -1,0 +1,17 @@
+body.cw-canvas-themed {
+  --cw-canvas-border: color-mix(in srgb, var(--cw-canvas-ink) 40%, var(--cw-canvas-background));
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body#tinymce.cw-canvas-themed {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed :is(#content, #main, #quiz_show, .quiz_show, .quiz-student-details, .quiz_student_details) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed :is(h1, h2, h3, h4, p, li, strong) { color: var(--cw-canvas-ink) !important; }
+body.cw-canvas-themed a { color: var(--cw-canvas-link) !important; }
+body.cw-canvas-themed :is(hr, .quiz_student_details, .quiz_student_details li) { border-color: var(--cw-canvas-border) !important; }

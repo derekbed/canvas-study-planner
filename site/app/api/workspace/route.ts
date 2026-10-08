@@ -1,3 +1,4 @@
+import { extraAction } from "@/lib/workspace-actions";
 import { database, jsonError, cleanText, numberIn, now, userId, workspace } from "@/lib/server";
 
 export async function GET(request: Request) {
@@ -13,6 +14,9 @@ export async function POST(request: Request) {
   const action = cleanText(body.action, 40);
   const db = database(); const id = cleanText(body.id, 150);
   try {
+    const handled=await extraAction(user,action,body);
+    if(handled instanceof Response)return handled;
+    if(handled) return Response.json(await workspace(user));
     if (action === "course:create") {
       const name = cleanText(body.name, 120); if (!name) return jsonError("Enter a course name.");
       const created = crypto.randomUUID();
@@ -20,9 +24,21 @@ export async function POST(request: Request) {
         .bind(created, user, name, cleanText(body.code, 40), cleanText(body.color, 20) || "blue", 90, "{}", "manual", now()).run();
     } else if (action === "course:update") {
       if (!id) return jsonError("Choose a course.");
+      const weights=body.gradeWeights;
+      if(!weights || typeof weights!=="object" || Array.isArray(weights) || Object.entries(weights).some(([k,v])=>!k.trim() || typeof v!=="number" || !Number.isFinite(v) || v<0 || v>100))return jsonError("Enter valid category weights from 0 to 100.");
+      if(JSON.stringify(weights).length>3000)return jsonError("Too many grading categories.");
+      const total=Object.values(weights).reduce<number>((n,v)=>n+Number(v),0);
+      if(total && Math.abs(total-100)>0.01)return jsonError("Category weights must total 100%.");
       await db.prepare("UPDATE courses SET target_grade = ?, current_grade = ?, grade_weights = ? WHERE id = ? AND user_id = ?")
         .bind(numberIn(body.targetGrade, 0, 100, 90), body.currentGrade === "" || body.currentGrade == null ? null : numberIn(body.currentGrade, 0, 100, 0),
-          typeof body.gradeWeights === "object" ? JSON.stringify(body.gradeWeights).slice(0, 3000) : "{}", id, user).run();
+          typeof body.gradeWeights === "object" ? JSON.stringify(body.gradeWeights) : "{}", id, user).run();
+      if(body.currentGrade!=="" && body.currentGrade!=null) await db.prepare("INSERT INTO grade_history (id,user_id,course_id,grade,recorded_at) SELECT ?,?,?,?,? WHERE EXISTS (SELECT 1 FROM courses WHERE id=? AND user_id=?)").bind(crypto.randomUUID(),user,id,numberIn(body.currentGrade,0,100,0),now(),id,user).run();
+    } else if (action === "course:rename") {
+      const name = cleanText(body.name, 120);
+      if (!id || !name) return jsonError("Enter a course name.");
+      const owned = await db.prepare("SELECT id FROM courses WHERE id=? AND user_id=?").bind(id, user).first();
+      if (!owned) return jsonError("Course not found.", 404);
+      await db.prepare("UPDATE courses SET name=? WHERE id=? AND user_id=?").bind(name, id, user).run();
     } else if (action === "event:create") {
       const title = cleanText(body.title, 180), dueAt = cleanText(body.dueAt, 80), courseId = cleanText(body.courseId, 150);
       if (!title || !dueAt || !Number.isFinite(Date.parse(dueAt))) return jsonError("Enter a title and valid date.");
@@ -41,12 +57,15 @@ export async function POST(request: Request) {
       await db.prepare("INSERT INTO settings (user_id,available_days,hours_per_week,reminder_hours) VALUES (?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET available_days=excluded.available_days,hours_per_week=excluded.hours_per_week,reminder_hours=excluded.reminder_hours")
         .bind(user, JSON.stringify(days), numberIn(body.hoursPerWeek, 1, 40, 8), numberIn(body.reminderHours, 1, 168, 24)).run();
     } else if (action === "plan:save") {
-      const blocks = Array.isArray(body.blocks) ? body.blocks.slice(0, 50) : [];
+      if(!Array.isArray(body.blocks)||body.blocks.length>250)return jsonError("A plan must contain at most 250 sessions.");
+      const blocks = body.blocks;
       const statements = [db.prepare("DELETE FROM study_blocks WHERE user_id = ? AND status = 'planned'").bind(user)];
       for (const raw of blocks) {
         if (!raw || typeof raw !== "object") continue;
         const item = raw as Record<string, unknown>; const courseId = cleanText(item.courseId, 150), eventId = cleanText(item.eventId, 150), startsAt = cleanText(item.startsAt, 80);
-        if (!Number.isFinite(Date.parse(startsAt))) continue;
+        if (!Number.isFinite(Date.parse(startsAt))) return jsonError("Invalid study time.");
+        if(courseId && !await db.prepare("SELECT id FROM courses WHERE id=? AND user_id=?").bind(courseId,user).first())return jsonError("Course not found.");
+        if(eventId && !await db.prepare("SELECT id FROM events WHERE id=? AND user_id=?").bind(eventId,user).first())return jsonError("Assignment not found.");
         statements.push(db.prepare("INSERT INTO study_blocks (id,user_id,course_id,event_id,starts_at,minutes,status) VALUES (?,?,?,?,?,?,?)")
           .bind(crypto.randomUUID(), user, courseId || null, eventId || null, new Date(startsAt).toISOString(), numberIn(item.minutes, 15, 240, 60), "planned"));
       }
@@ -57,5 +76,5 @@ export async function POST(request: Request) {
       return jsonError("Unknown action.");
     }
     return Response.json(await workspace(user));
-  } catch (error) { console.error("Workspace save failed", error); return jsonError("Your changes could not be saved. Please try again.", 503); }
+  } catch { return jsonError("Your changes could not be saved. Please try again.", 503); }
 }
