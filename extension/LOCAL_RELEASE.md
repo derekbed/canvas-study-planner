@@ -14,7 +14,7 @@ node extension/scripts/build-local-release.mjs --out extension/local-release
 
 Load `extension/local-release` through `chrome://extensions` → Developer mode → Load unpacked. Click its toolbar button, read and accept the disclosure, then enter the HTTPS address of your school's Canvas site. Chrome asks for access to that exact school domain. Reload open Canvas tabs after connecting. Coursewise works with multiple connected schools, keeping course appearance and read-state separate by Canvas origin. Use the Dashboard three-dot menu → Coursewise settings for appearance and the next-deadline window.
 
-This local testing build uses a grey toolbar icon to distinguish it from older blue packages and the blue prototype. After rebuilding, reload the unpacked extension in `chrome://extensions` to see the new icon.
+This local testing build uses a black outline and white toolbar icon. The published extension keeps its solid color icon. After rebuilding, reload the unpacked extension in `chrome://extensions` to see the new icon.
 
 The generated package requests no site access at install time. It declares optional HTTPS host access and asks for one school domain at a time. It includes no embedded workspace, page-text extractor, pairing API, or AI code. The existing website and AI source remain in this repository for a later edition.
 
