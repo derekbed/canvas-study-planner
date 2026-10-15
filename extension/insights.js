@@ -11,7 +11,7 @@
     requested: new Set(), errors: new Map(), loading: false, generation: 0,
     active: "assignment", expanded: new Set(),
     read: new Set(), showRead: false, lastHidden: null, storageError: false,
-    preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, ...palette.cachedPreferences() }, workspace: null, railWidth: 320, railCollapsed: false, courseExpanded: false, appearanceCourseId: "", horizontalView: false, horizontalCardHeight: 160, cardScale: 100
+    preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, ...palette.cachedPreferences() }, workspace: null, railWidth: 320, railCollapsed: false, courseExpanded: false, horizontalView: false, horizontalCardHeight: 160, cardScale: 100
   };
   const READ_KEY = "cwReadAssignmentsV1";
   const RAIL_WIDTH_KEY = "cwRailWidthV2";
@@ -107,6 +107,8 @@
   const dateOnly = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
   const monthOnly = new Intl.DateTimeFormat(undefined, { month: "short" });
   const dayOnly = new Intl.DateTimeFormat(undefined, { day: "numeric" });
+  const longMonth = new Intl.DateTimeFormat("en-US", { month: "long" });
+  const clockTime = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
   const spaces = [
     { key: "assignment", name: "Assignments", label: "Work to do", description: "Homework and projects by deadline. Check an item to mark it as read.", tone: "mint" },
     { key: "assessment", name: "Exams & quizzes", label: "Prepare ahead", description: "Assessments have their own space, apart from everyday coursework.", tone: "peach" },
@@ -124,13 +126,7 @@
     return reply.data;
   }
   function applyBackground() {
-    const selected = /^#[0-9a-f]{6}$/i.test(state.preferences.canvasBackground) ? state.preferences.canvasBackground : "#f7faf9";
-    const mode = ["light", "dark", "system"].includes(state.preferences.canvasThemeMode) ? state.preferences.canvasThemeMode : "light";
-    const dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-    palette.applyTheme(selected, dark, mode);
-  }
-  function effectiveDarkMode() {
-    return state.preferences.canvasThemeMode === "dark" || (state.preferences.canvasThemeMode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+    palette.applyPreferences(state.preferences);
   }
   async function saveAppearancePreferences(patch) {
     const controls = [...document.querySelectorAll(".cw-appearance-dialog :is(select,input,button):not(.cw-appearance-close)")];
@@ -151,7 +147,7 @@
     finally { controls.forEach(control => { control.disabled = false; }); syncAppearanceModeControls(); }
   }
   function syncAppearanceModeControls() {
-    const dark = effectiveDarkMode();
+    const dark = palette.isDark(state.preferences);
     const colorways = document.querySelector(".cw-appearance-light-options");
     const note = document.querySelector(".cw-appearance-dark-note");
     if (colorways) colorways.hidden = dark;
@@ -168,16 +164,20 @@
       swatch.setAttribute("aria-pressed", String(swatch.dataset.backgroundColor === palette.background(state.preferences.canvasBackground)));
     });
   }
-  function appearancePanel() {
+  function settingsDialog(titleText, titleId, closeLabel) {
     const backdrop = node("dialog", undefined, "cw-appearance-backdrop");
-    backdrop.setAttribute("aria-labelledby", "cw-appearance-title");
+    backdrop.setAttribute("aria-labelledby", titleId);
     backdrop.addEventListener("click", event => { if (event.target === backdrop) backdrop.close(); });
     backdrop.addEventListener("close", () => backdrop.remove());
     const box = node("section", undefined, "cw-appearance-dialog");
     const head = node("header", undefined, "cw-appearance-dialog__head");
-    const title = node("h2", "Coursewise settings"); title.id = "cw-appearance-title";
-    const close = node("button", "×", "cw-appearance-close"); close.type = "button"; close.setAttribute("aria-label", "Close Coursewise settings"); close.addEventListener("click", () => backdrop.close());
-    head.append(title, close); box.append(head);
+    const title = node("h2", titleText); title.id = titleId;
+    const close = node("button", "×", "cw-appearance-close"); close.type = "button"; close.setAttribute("aria-label", closeLabel); close.addEventListener("click", () => backdrop.close());
+    head.append(title, close); box.append(head); backdrop.append(box);
+    return { backdrop, box };
+  }
+  function appearancePanel() {
+    const { backdrop, box } = settingsDialog("Coursewise settings", "cw-appearance-title", "Close Coursewise settings");
     const modeLabel = node("label", "Appearance mode", "cw-appearance-field");
     const modeSelect = node("select"); modeSelect.setAttribute("aria-label", "Canvas appearance mode");
     [["light", "Always light"], ["dark", "Always dark"], ["system", "Match system"]].forEach(([value, label]) => { const option = node("option", label); option.value = value; modeSelect.append(option); });
@@ -214,20 +214,12 @@
     const picker = node("input"); picker.type = "color"; picker.value = palette.background(state.preferences.canvasBackground); picker.setAttribute("aria-label", "Custom Canvas background color"); picker.addEventListener("change", () => saveAppearancePreferences({ canvasBackground: picker.value }));
     row.append(node("span", "Custom", "cw-hub__appearance-help"), picker); colorways.append(row); box.append(colorways);
     const status = node("p", "", "cw-appearance-status"); status.setAttribute("role", "status"); box.append(status);
-    backdrop.append(box); return backdrop;
+    return backdrop;
   }
   function coursePicturePanel(courseId) {
     const course = state.workspace?.courses?.find(item => String(item.id) === String(courseId));
     if (!course) return null;
-    const backdrop = node("dialog", undefined, "cw-appearance-backdrop");
-    backdrop.setAttribute("aria-labelledby", "cw-course-picture-title");
-    backdrop.addEventListener("click", event => { if (event.target === backdrop) backdrop.close(); });
-    backdrop.addEventListener("close", () => backdrop.remove());
-    const box = node("section", undefined, "cw-appearance-dialog");
-    const head = node("header", undefined, "cw-appearance-dialog__head");
-    const title = node("h2", `${course.name} picture`); title.id = "cw-course-picture-title";
-    const close = node("button", "×", "cw-appearance-close"); close.type = "button"; close.setAttribute("aria-label", "Close course picture settings"); close.addEventListener("click", () => backdrop.close());
-    head.append(title, close); box.append(head);
+    const { backdrop, box } = settingsDialog(`${course.name} picture`, "cw-course-picture-title", "Close course picture settings");
     const details = node("div", undefined, "cw-appearance-course-controls");
     let pendingImageUrl = null, pendingFileName = "";
     const status = node("p", "", "cw-appearance-status"); status.setAttribute("role", "status");
@@ -266,7 +258,7 @@
       });
     };
     box.append(node("p", "Choose an image for this course card.", "cw-hub__appearance-help"), details, status);
-    renderPicture(); backdrop.append(box); return backdrop;
+    renderPicture(); return backdrop;
   }
   function openAppearancePopup(workspace) {
     if (workspace?.courses) state.workspace = workspace;
@@ -283,7 +275,7 @@
     document.body.append(popup); popup.showModal();
     popup.querySelector('input[type="file"]')?.focus();
   }
-  globalThis.CoursewiseAppearance = { open: openAppearancePopup };
+  globalThis.CoursewiseAppearance = { open: openAppearancePopup, paintCoursePicture };
   function maxRailWidth() {
     const wrapper = document.querySelector("#wrapper"), content = document.querySelector("#content"), side = document.querySelector("#right-side-wrapper");
     const card = document.querySelector(".ic-DashboardCard");
@@ -300,7 +292,7 @@
     if (!document.querySelector(".cw-rail-collapse")) {
       const collapse = node("button", "›", "cw-rail-collapse"); collapse.type = "button";
       collapse.setAttribute("aria-label", "Hide Coursewise sidebar"); collapse.title = "Hide Coursewise sidebar";
-      collapse.addEventListener("click", () => collapseRail(true));
+      dragOrClick(collapse, () => collapseRail(true));
       hub.append(collapse);
     }
   }
@@ -328,6 +320,31 @@
   function saveCardScale() {
     viewSaveQueue = viewSaveQueue.then(() => chrome.storage.local.set({ [CARD_SCALE_KEY]: state.cardScale })).catch(() => {});
   }
+  // Shared drag and keyboard behaviour for the card resize handles.
+  function bindResizeHandle(handle, { start, move, apply, save, restore, keyValue }) {
+    handle.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
+      event.preventDefault(); event.stopPropagation();
+      start(event);
+      handle.setPointerCapture(event.pointerId);
+    });
+    handle.addEventListener("pointermove", event => { if (handle.hasPointerCapture(event.pointerId)) move(event); });
+    handle.addEventListener("pointerup", event => {
+      if (!handle.hasPointerCapture(event.pointerId)) return;
+      handle.releasePointerCapture(event.pointerId);
+      save();
+    });
+    handle.addEventListener("pointercancel", event => {
+      if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+      restore();
+    });
+    handle.addEventListener("keydown", event => {
+      const value = keyValue(event.key);
+      if (value == null) return;
+      event.preventDefault(); event.stopPropagation();
+      apply(value); save();
+    });
+  }
   function ensureCardResizeHandles() {
     for (const { card } of dashboardCards()) {
       if (card.querySelector(".cw-card-resize-handle")) continue;
@@ -341,37 +358,26 @@
       handle.setAttribute("aria-valuetext", `${state.cardScale}%`);
       handle.title = "Drag diagonally to scale all course cards";
       let startX = 0, startY = 0, startScale = 0, baseWidth = 0, baseHeight = 0;
-      handle.addEventListener("pointerdown", event => {
-        if (event.button !== 0) return;
-        event.preventDefault(); event.stopPropagation();
-        startX = event.clientX; startY = event.clientY; startScale = state.cardScale;
-        baseWidth = card.getBoundingClientRect().width / (state.cardScale / 100);
-        baseHeight = card.getBoundingClientRect().height / (state.cardScale / 100);
-        handle.setPointerCapture(event.pointerId);
-      });
-      handle.addEventListener("pointermove", event => {
-        if (!handle.hasPointerCapture(event.pointerId)) return;
-        const horizontal = (event.clientX - startX) / baseWidth;
-        const vertical = (event.clientY - startY) / baseHeight;
-        const change = Math.abs(horizontal) > Math.abs(vertical) ? horizontal : vertical;
-        updateCardScale(startScale + change * 100);
-      });
-      handle.addEventListener("pointerup", event => {
-        if (!handle.hasPointerCapture(event.pointerId)) return;
-        handle.releasePointerCapture(event.pointerId);
-        saveCardScale();
-      });
-      handle.addEventListener("pointercancel", event => {
-        if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
-        updateCardScale(startScale);
-      });
-      handle.addEventListener("keydown", event => {
-        const delta = { ArrowUp: 5, ArrowRight: 5, ArrowDown: -5, ArrowLeft: -5, PageUp: 10, PageDown: -10 }[event.key];
-        const scale = event.key === "Home" ? MIN_CARD_SCALE : event.key === "End" ? MAX_CARD_SCALE : delta == null ? null : state.cardScale + delta;
-        if (scale == null) return;
-        event.preventDefault(); event.stopPropagation();
-        updateCardScale(scale);
-        saveCardScale();
+      bindResizeHandle(handle, {
+        start: event => {
+          startX = event.clientX; startY = event.clientY; startScale = state.cardScale;
+          baseWidth = card.getBoundingClientRect().width / (state.cardScale / 100);
+          baseHeight = card.getBoundingClientRect().height / (state.cardScale / 100);
+        },
+        move: event => {
+          const horizontal = (event.clientX - startX) / baseWidth;
+          const vertical = (event.clientY - startY) / baseHeight;
+          updateCardScale(startScale + (Math.abs(horizontal) > Math.abs(vertical) ? horizontal : vertical) * 100);
+        },
+        apply: updateCardScale,
+        save: saveCardScale,
+        restore: () => updateCardScale(startScale),
+        keyValue: key => {
+          if (key === "Home") return MIN_CARD_SCALE;
+          if (key === "End") return MAX_CARD_SCALE;
+          const delta = { ArrowUp: 5, ArrowRight: 5, ArrowDown: -5, ArrowLeft: -5, PageUp: 10, PageDown: -10 }[key];
+          return delta == null ? null : state.cardScale + delta;
+        }
       });
       card.append(handle);
     }
@@ -392,7 +398,7 @@
       if (card.querySelector(".cw-horizontal-resize-handle")) continue;
       const handle = node("div", undefined, "cw-horizontal-resize-handle");
       handle.setAttribute("role", "slider");
-      handle.setAttribute("tabindex", "0");
+      handle.tabIndex = 0;
       handle.setAttribute("aria-label", "Resize all course cards");
       handle.setAttribute("aria-orientation", "vertical");
       handle.setAttribute("aria-valuemin", String(MIN_HORIZONTAL_CARD_HEIGHT));
@@ -400,38 +406,23 @@
       handle.setAttribute("aria-valuenow", String(state.horizontalCardHeight));
       handle.title = "Drag to resize all course cards";
       let startY = 0, startHeight = 0;
-      handle.addEventListener("pointerdown", event => {
-        if (event.button !== 0) return;
-        event.preventDefault(); event.stopPropagation();
-        startY = event.clientY; startHeight = state.horizontalCardHeight;
-        handle.setPointerCapture(event.pointerId);
-      });
-      handle.addEventListener("pointermove", event => {
-        if (!handle.hasPointerCapture(event.pointerId)) return;
-        updateHorizontalCardHeight(startHeight + event.clientY - startY);
-      });
-      handle.addEventListener("pointerup", event => {
-        if (!handle.hasPointerCapture(event.pointerId)) return;
-        handle.releasePointerCapture(event.pointerId);
-        saveHorizontalCardHeight();
-      });
-      handle.addEventListener("pointercancel", event => {
-        if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
-        updateHorizontalCardHeight(startHeight);
-      });
-      handle.addEventListener("keydown", event => {
-        const delta = { ArrowUp: -10, ArrowDown: 10, PageUp: -40, PageDown: 40 }[event.key];
-        const height = event.key === "Home" ? MIN_HORIZONTAL_CARD_HEIGHT : event.key === "End" ? MAX_HORIZONTAL_CARD_HEIGHT : delta == null ? null : state.horizontalCardHeight + delta;
-        if (height == null) return;
-        event.preventDefault(); event.stopPropagation();
-        updateHorizontalCardHeight(height);
-        saveHorizontalCardHeight();
+      bindResizeHandle(handle, {
+        start: event => { startY = event.clientY; startHeight = state.horizontalCardHeight; },
+        move: event => updateHorizontalCardHeight(startHeight + event.clientY - startY),
+        apply: updateHorizontalCardHeight,
+        save: saveHorizontalCardHeight,
+        restore: () => updateHorizontalCardHeight(startHeight),
+        keyValue: key => {
+          if (key === "Home") return MIN_HORIZONTAL_CARD_HEIGHT;
+          if (key === "End") return MAX_HORIZONTAL_CARD_HEIGHT;
+          const delta = { ArrowUp: -10, ArrowDown: 10, PageUp: -40, PageDown: 40 }[key];
+          return delta == null ? null : state.horizontalCardHeight + delta;
+        }
       });
       card.append(handle);
     }
   }
   let viewSaveQueue = Promise.resolve();
-  const pictureMenuTriggers = new WeakSet();
   let pictureMenuCourseId = "";
   function setHorizontalView(enabled) {
     state.horizontalView = enabled;
@@ -490,6 +481,21 @@
       }, true);
     }
   }
+  // Copy one of Canvas' own menu rows so an added action keeps its styling,
+  // without the source row's IDs, state or link.
+  function cloneMenuItem(template, text) {
+    const item = template.cloneNode(true);
+    for (const element of [item, ...item.querySelectorAll("*")]) {
+      for (const name of ["id", "data-testid", "aria-labelledby", "aria-checked", "aria-selected", "aria-disabled", "href", "data-cw-hidden-menu-item"]) element.removeAttribute(name);
+    }
+    item.setAttribute("role", "menuitem");
+    item.setAttribute("aria-label", text);
+    item.tabIndex = 0;
+    if (item.tagName === "BUTTON") item.type = "button";
+    const label = [...item.querySelectorAll("*")].reverse().find(element => !element.children.length && element.textContent.trim());
+    if (label) label.textContent = text; else item.textContent = text;
+    return item;
+  }
   function addCoursewiseAppearanceMenuItem() {
     if (route()?.type !== "dashboard") return;
     for (const menu of document.querySelectorAll('[role="menu"]')) {
@@ -503,22 +509,8 @@
       // Clone one menu control, never its surrounding row: the row may contain
       // Color Overlay as well, making both labels one click target.
       const template = options.find(option => option.textContent.trim() === "Recent Activity") || overlay;
-      const item = template.cloneNode(true);
-      for (const element of [item, ...item.querySelectorAll("*")]) {
-        element.removeAttribute("id");
-        element.removeAttribute("data-testid");
-        element.removeAttribute("aria-labelledby");
-        element.removeAttribute("aria-checked");
-        element.removeAttribute("aria-selected");
-        element.removeAttribute("href");
-      }
+      const item = cloneMenuItem(template, "Coursewise settings");
       item.dataset.cwAppearanceMenuItem = "true";
-      item.setAttribute("role", "menuitem");
-      item.setAttribute("aria-label", "Coursewise settings");
-      item.tabIndex = 0;
-      const label = [...item.querySelectorAll("*")].reverse().find(element => !element.children.length && element.textContent.trim());
-      if (label) label.textContent = "Coursewise settings";
-      else item.textContent = "Coursewise settings";
       item.addEventListener("click", event => {
         event.preventDefault(); event.stopImmediatePropagation();
         openAppearancePopup();
@@ -527,20 +519,9 @@
     }
   }
   function addCoursePictureMenuItem() {
-    if (route()?.type !== "dashboard") return;
-    for (const { id, card } of dashboardCards()) {
-      const trigger = [...card.querySelectorAll("button")].find(button => /choose a color or course nickname or move course card/i.test(`${button.getAttribute("aria-label") || ""} ${button.textContent || ""}`));
-      if (!trigger || pictureMenuTriggers.has(trigger)) continue;
-      pictureMenuTriggers.add(trigger);
-      trigger.addEventListener("click", () => {
-        pictureMenuCourseId = id;
-        setTimeout(addCoursePictureMenuItem, 100);
-      }, true);
-    }
-    // Do not inspect Canvas' entire dashboard until a course popout is open.
-    // This function runs from the page MutationObserver and broad scans here
-    // can otherwise make the dashboard appear to hang while it loads.
-    if (!pictureMenuCourseId) return;
+    // pictureMenuCourseId is set when a card's options button is clicked.
+    // Until then, skip the popout scan: this runs on every page mutation.
+    if (route()?.type !== "dashboard" || !pictureMenuCourseId) return;
     const nativePopout = document.querySelector('[class*="view-tabs__container"], [role="tablist"], [role="tabpanel"]');
     if (!nativePopout) {
       pictureMenuCourseId = "";
@@ -583,27 +564,16 @@
     if (menu.querySelector("[data-cw-course-picture-menu-item]")) return;
     const courseId = pictureMenuCourseId;
     const open = event => { event.preventDefault(); event.stopPropagation(); openCoursePicturePopup(courseId); };
-    // Copy one of Canvas' own rows so the picture action matches its width,
-    // font, color, icon, spacing, hover and focus styles.
     const template = [...menu.querySelectorAll('[role="menuitem"]')].find(option => !option.hasAttribute("data-cw-hidden-menu-item") && option.querySelector("svg"));
     if (!template) return;
-    const item = template.cloneNode(true);
-    for (const element of [item, ...item.querySelectorAll("*")]) {
-      element.removeAttribute("id"); element.removeAttribute("data-testid"); element.removeAttribute("aria-labelledby"); element.removeAttribute("aria-checked"); element.removeAttribute("aria-selected"); element.removeAttribute("aria-disabled"); element.removeAttribute("href"); element.removeAttribute("data-cw-hidden-menu-item");
-    }
+    const item = cloneMenuItem(template, "Course picture");
     item.dataset.cwCoursePictureMenuItem = "true";
-    item.setAttribute("role", "menuitem");
-    item.setAttribute("aria-label", "Course picture");
-    item.tabIndex = 0;
-    if (item.tagName === "BUTTON") item.type = "button";
     const svg = item.querySelector("svg");
     if (svg) {
       svg.setAttribute("name", "IconImage");
       svg.setAttribute("viewBox", "0 0 1920 1920");
       svg.replaceChildren(...coursePictureIconPaths());
     }
-    const label = [...item.querySelectorAll("*")].reverse().find(element => !element.children.length && element.textContent.trim());
-    if (label) label.textContent = "Course picture"; else item.textContent = "Course picture";
     item.addEventListener("click", open, true);
     item.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") open(event); }, true);
     menu.prepend(item);
@@ -645,7 +615,7 @@
     if (!state.railCollapsed || route()?.type !== "dashboard" || document.querySelector(".cw-rail-reopen")) return;
     const reopen = node("button", "‹", "cw-rail-reopen"); reopen.type = "button";
     reopen.setAttribute("aria-label", "Show Coursewise sidebar"); reopen.title = "Show Coursewise sidebar";
-    reopen.addEventListener("click", () => { collapseRail(false); renderHub(); });
+    dragOrClick(reopen, () => { collapseRail(false); renderHub(); });
     document.body.append(reopen);
   }
   function collapseRail(collapsed) {
@@ -700,6 +670,12 @@
     window.addEventListener("blur", stop);
     document.body.addEventListener("lostpointercapture", stop);
   }
+  // The collapse/reopen tabs toggle on click and resize the rail when dragged.
+  function dragOrClick(tab, onClick) {
+    let dragged = false;
+    tab.addEventListener("pointerdown", event => { dragged = false; startRailResize(event, () => { dragged = true; }, 4); });
+    tab.addEventListener("click", event => { if (dragged) { event.preventDefault(); dragged = false; return; } onClick(); });
+  }
   function railHandle() {
     const handle = node("div", undefined, "cw-rail-resize-handle"); handle.setAttribute("role", "separator"); handle.setAttribute("aria-label", "Resize Coursewise organizer"); handle.title = "Drag or use arrow keys to resize";
     handle.tabIndex = 0;
@@ -731,20 +707,28 @@
       return url.origin === model.ORIGIN && url.pathname === pathname && !url.hash ? url : null;
     } catch { return null; }
   }
-  async function apiPages(pathname, params, maxPages) {
-    let next = new URL(pathname, model.ORIGIN), items = [];
-    for (const [key, value] of params) next.searchParams.append(key, value);
-    for (let page = 0; page < (maxPages || 2) && next; page++) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      let response;
-      try {
-        response = await fetch(next.href, {
-          credentials: "same-origin", cache: "no-store",
-          headers: { Accept: "application/json" }, signal: controller.signal
-        });
-      } finally { clearTimeout(timeout); }
-      if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) throw new Error("Canvas did not provide this list.");
+  function apiUrl(pathname, params) {
+    const url = new URL(pathname, model.ORIGIN);
+    for (const [key, value] of params) url.searchParams.append(key, value);
+    return url;
+  }
+  async function canvasResponse(url, failure) {
+    const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
+    let response;
+    try {
+      response = await fetch(url.href, {
+        credentials: "same-origin", cache: "no-store",
+        headers: { Accept: "application/json" }, signal: controller.signal
+      });
+    } finally { clearTimeout(timeout); }
+    if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) throw new Error(failure);
+    return response;
+  }
+  async function apiPages(pathname, params, maxPages = 2) {
+    let next = apiUrl(pathname, params);
+    const items = [];
+    for (let page = 0; page < maxPages && next; page++) {
+      const response = await canvasResponse(next, "Canvas did not provide this list.");
       const data = await response.json();
       if (!Array.isArray(data)) throw new Error("Canvas list format changed.");
       items.push(...data);
@@ -755,18 +739,7 @@
     return items;
   }
   async function apiOne(pathname, params) {
-    const url = new URL(pathname, model.ORIGIN);
-    for (const [key, value] of params) url.searchParams.append(key, value);
-    const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
-    let response;
-    try {
-      response = await fetch(url.href, {
-        credentials: "same-origin", cache: "no-store",
-        headers: { Accept: "application/json" }, signal: controller.signal
-      });
-    } finally { clearTimeout(timeout); }
-    if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) throw new Error("Canvas did not provide this course.");
-    return response.json();
+    return (await canvasResponse(apiUrl(pathname, params), "Canvas did not provide this course.")).json();
   }
   function dashboardCards() {
     const cards = new Map();
@@ -910,8 +883,8 @@
       const when = new Date(due.dueAt);
       const day = when.getDate();
       const ordinal = day % 100 >= 11 && day % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[day % 10] || "th");
-      const month = new Intl.DateTimeFormat("en-US", { month: "long" }).format(when);
-      const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(when).replace(/:00(?=\s*[AP]M$)/, "");
+      const month = longMonth.format(when);
+      const time = clockTime.format(when).replace(/:00(?=\s*[AP]M$)/, "");
       const compactDate = `${month} ${day}${ordinal}${when.getFullYear() === new Date().getFullYear() ? "" : `, ${when.getFullYear()}`}, ${time}`;
       const link = node("a", due.title); link.href = due.url;
       link.title = due.title;
@@ -1083,8 +1056,6 @@
       toggle.addEventListener("click", () => { state.courseExpanded = !state.courseExpanded; renderHub(); document.querySelector(".cw-hub__course-toggle")?.focus(); });
       summary.append(toggle);
       hub.append(summary);
-    }
-    if (current.type === "course") {
       const links = node("div", undefined, "cw-hub__course-links");
       for (const [label, path] of [["Canvas grades", "grades"], ["All Canvas assignments", "assignments"], ["Canvas announcements", "announcements"]]) {
         const link = node("a", label); link.href = "/courses/" + current.id + "/" + path;
@@ -1215,7 +1186,7 @@
     const host = document.querySelector("#right-side") ||
       document.querySelector("#content, .ic-Layout-contentMain, main");
     if (!host) return;
-    if (current.type === "dashboard") { applyRailSize(); document.querySelector(".cw-rail-reopen")?.remove(); }
+    if (current.type === "dashboard") applyRailSize();
     const hub = makeHub(current);
     const old = document.querySelector(".cw-hub");
     if (old) old.replaceWith(hub);
@@ -1261,18 +1232,15 @@
       return;
     }
     state.route = key; state.generation++; state.loading = false; state.courseExpanded = false;
-    document.querySelectorAll(".cw-hub,.cw-rail-collapse,.cw-rail-reopen,.cw-card-grade,.cw-card-due,.cw-health-row,.cw-health-dialog,.cw-dashboard-status,.cw-course-overview,.cw-horizontal-resize-handle,.cw-card-resize-handle").forEach(el => el.remove());
+    document.querySelectorAll(".cw-hub,.cw-rail-collapse,.cw-rail-reopen,.cw-card-grade,.cw-card-due,.cw-health-row,.cw-health-dialog,.cw-horizontal-resize-handle,.cw-card-resize-handle").forEach(el => el.remove());
     document.body.classList.remove("cw-organizer-active");
     if (current) load();
   }
   let timer, routeReady = false;
   function enhanceDashboardMenus() {
-    if (route()?.type !== "dashboard") return;
-    if (document.querySelector('[role="menu"] [data-testid="list-view-menu-item"]')) {
-      addHorizontalViewMenuItem();
-      addCoursewiseAppearanceMenuItem();
-      addCoursePictureMenuItem();
-    }
+    if (route()?.type !== "dashboard" || !document.querySelector('[role="menu"] [data-testid="list-view-menu-item"]')) return;
+    addHorizontalViewMenuItem();
+    addCoursewiseAppearanceMenuItem();
   }
   const observer = new MutationObserver(() => {
     enhanceDashboardMenus();
@@ -1285,7 +1253,7 @@
     document.body.classList.add("cw-theme-loading");
     observer.observe(document.documentElement, { childList: true, subtree: true });
     document.addEventListener("click", event => {
-          const trigger = event.target.closest?.(".ic-DashboardCard__header-button");
+      const trigger = event.target.closest?.(".ic-DashboardCard__header-button");
       if (!trigger || !/choose a color or course nickname or move course card/i.test(`${trigger.getAttribute("aria-label") || ""} ${trigger.textContent || ""}`)) return;
       const card = trigger.closest('.ic-DashboardCard, .DashboardCard, [data-testid="course-card"], .course-card, article');
       const link = card?.querySelector('a[href*="/courses/"]');
@@ -1296,20 +1264,19 @@
     }, true);
     enhanceDashboardMenus();
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === "local" && changes.cwCanvasPreferences?.newValue) {
+      if (area !== "local") return;
+      if (changes.cwCanvasPreferences?.newValue) {
         Object.assign(state.preferences, changes.cwCanvasPreferences.newValue);
         applyBackground(); syncAppearanceModeControls(); renderCards();
       }
-      if (area === "local" && (changes.cwLocalSchools || changes.cwCourseAppearanceUpdated)) {
+      if (changes.cwLocalSchools || changes.cwCourseAppearanceUpdated) {
         broker("getWorkspace").then(workspace => { state.workspace = workspace; render(); }).catch(() => {});
       }
-      if (area === "local" && changes[HORIZONTAL_CARD_HEIGHT_KEY]) {
-        const height = changes[HORIZONTAL_CARD_HEIGHT_KEY].newValue;
-        if (Number.isFinite(height)) updateHorizontalCardHeight(height);
-      }
-      if (area === "local" && changes[CARD_SCALE_KEY]) {
-        const scale = changes[CARD_SCALE_KEY].newValue;
-        if (Number.isFinite(scale)) updateCardScale(scale);
+      if (Number.isFinite(changes[HORIZONTAL_CARD_HEIGHT_KEY]?.newValue)) updateHorizontalCardHeight(changes[HORIZONTAL_CARD_HEIGHT_KEY].newValue);
+      if (Number.isFinite(changes[CARD_SCALE_KEY]?.newValue)) updateCardScale(changes[CARD_SCALE_KEY].newValue);
+      if (changes[READ_KEY]) {
+        state.read = new Set(validReadKeys(changes[READ_KEY].newValue));
+        renderHub();
       }
     });
     matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
@@ -1331,11 +1298,6 @@
       state.preferences = preferences; applyBackground(); syncAppearanceModeControls(); renderCards();
     }).catch(() => {});
     broker("getWorkspace").then(workspace => { state.workspace = workspace; render(); }).catch(() => {});
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== "local" || !changes[READ_KEY]) return;
-      state.read = new Set(validReadKeys(changes[READ_KEY].newValue));
-      renderHub();
-    });
     routeReady = true;
     window.addEventListener("popstate", onRoute);
     window.addEventListener("cw-coursewise-visibility", () => { onRoute(); if (!document.body.classList.contains("cw-canvas-app-active")) renderHub(); });

@@ -172,11 +172,25 @@
       searchThemeObserver.observe(document.documentElement, { childList: true, subtree: true });
     }
   }
+  // Resolve saved preferences (which may be missing or invalid) to a theme.
+  function themeMode(preferences) {
+    return ["light", "dark", "system"].includes(preferences?.canvasThemeMode) ? preferences.canvasThemeMode : "light";
+  }
+  function isDark(preferences) {
+    const mode = themeMode(preferences);
+    return mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+  function applyPreferences(preferences) {
+    const selected = /^#[0-9a-f]{6}$/i.test(preferences?.canvasBackground) ? preferences.canvasBackground : "#f7faf9";
+    applyTheme(selected, isDark(preferences), themeMode(preferences));
+  }
   globalThis.CoursewiseCanvasPalette = Object.freeze({
     presets: Object.freeze(presets.map(preset => Object.freeze(preset))),
     background,
     sidebarSource,
     applyTheme,
+    applyPreferences,
+    isDark,
     cachedPreferences,
     clearTheme,
     contrast,

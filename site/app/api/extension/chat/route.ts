@@ -1,13 +1,11 @@
 import { chatTurn, ChatError } from "@/lib/chat";
 import { extensionError, extensionResponse, extensionUser, fromExtension, preflight } from "@/lib/extension";
+import { stripPrivateFeeds } from "@/lib/course-knowledge";
 
 export const OPTIONS = preflight;
 type Context = { url?: string; pageTitle?: string; courseName?: string; visibleTextSummary?: string };
 type CanvasItem = { kind: string; title: string; when: string };
 const limits: Record<keyof Context, number> = { url: 400, pageTitle: 200, courseName: 200, visibleTextSummary: 2000 };
-function withoutPrivateFeeds(value: string) {
-  return value.replace(/\b(?:https?|webcal):\/\/[^\s<>"']*(?:\/feeds?\/|\.ics\b|calendar[_-]?feed)[^\s<>"']*/gi, "[private calendar link omitted]");
-}
 export async function POST(request: Request) {
   if (!fromExtension(request)) return extensionError(request, "Local extension chat is unavailable.", 403);
   const user = await extensionUser(request);
@@ -31,7 +29,7 @@ export async function POST(request: Request) {
     const value = (contextInput as Record<string, unknown>)[key];
     if (value === undefined) continue;
     if (typeof value !== "string" || value.length > limits[key]) return extensionError(request, "Canvas context is too large.", 413);
-    context[key] = withoutPrivateFeeds(value.trim());
+    context[key] = stripPrivateFeeds(value.trim());
   }
   if (context.url) {
     let url: URL;
@@ -51,7 +49,7 @@ export async function POST(request: Request) {
           !["assignment", "assessment", "announcement", "event"].includes(item.kind) ||
           typeof item.title !== "string" || item.title.length > 180 ||
           typeof item.when !== "string" || item.when.length > 80) return extensionError(request, "Canvas overview is invalid.", 400);
-      items.push({ kind: item.kind, title: withoutPrivateFeeds(item.title), when: item.when });
+      items.push({ kind: item.kind, title: stripPrivateFeeds(item.title), when: item.when });
     }
     canvasSnapshot = { grade: input.grade as number | null, items };
   }

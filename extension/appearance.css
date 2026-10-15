@@ -57,13 +57,12 @@
   font-size: 26px !important;
   line-height: 1 !important;
 }
-.cw-appearance-field, .cw-appearance-light-options, .cw-appearance-courses, .cw-appearance-course-controls { display: grid; gap: 10px; margin: 0; }
+.cw-appearance-field, .cw-appearance-light-options, .cw-appearance-course-controls { display: grid; gap: 10px; margin: 0; }
 .cw-appearance-field { font-weight: 650; }
 .cw-appearance-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .cw-appearance-dialog .cw-appearance-reset { justify-self: start; padding: 8px 14px; border: 1px solid var(--cw-line); border-radius: 9px; background: var(--cw-dialog-field); color: var(--cw-ink); font-size: 14px; font-weight: 650; }
 .cw-appearance-dialog .cw-appearance-reset:hover { border-color: var(--cw-teal); }
 .cw-appearance-toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--cw-teal, #138a81); cursor: pointer; }
-.cw-appearance-courses { border-top: 1px solid var(--cw-line); padding-top: 20px; }
 .cw-appearance-dialog select {
   width: 100%;
   height: auto;
@@ -77,7 +76,7 @@
   font-weight: 400;
 }
 .cw-appearance-dialog .cw-hub__appearance-help { color: var(--cw-muted); font-size: 13px; }
-.cw-appearance-dialog :is(.cw-hub__swatch, .cw-hub__course-swatch) { padding: 8px 12px; color: #182c3e; font-size: 13px; }
+.cw-appearance-dialog .cw-hub__swatch { padding: 8px 12px; color: #182c3e; font-size: 13px; }
 .cw-appearance-dialog input[type="color"] { width: 40px; height: 36px; padding: 3px; border: 1px solid var(--cw-line); border-radius: 7px; background: var(--cw-dialog-field); }
 .cw-appearance-upload { display: grid; gap: 8px; font-weight: 650; }
 .cw-appearance-upload input { width: 100%; color: var(--cw-muted); font-weight: 400; }
@@ -682,14 +681,17 @@ body.cw-canvas-themed :is([role="tabpanel"], [class*="tabs__panelsContainer"] > 
 
 /* The Coursewise sidebar is fully tinted by the selected palette, with no
    near-white page-background patches: the frame and panels use the menu
-   surface, and every card inside it uses the course-card tint. */
+   surface, and every card inside it uses the course-card tint. Bands such as
+   the toolbar and space list stay transparent (their native tablist styling is
+   overridden) so they never paint square corners over the rounded frame. */
+body.cw-canvas-themed:not(.cw-canvas-dark) :is(.cw-hub__spaces, .cw-hub__toolbar, .cw-hub__course-summary) { background: transparent !important; }
 body.cw-canvas-themed:not(.cw-canvas-dark) {
   --cw-hub-surface: color-mix(in srgb, var(--cw-canvas-background) 78%, var(--cw-nav-background));
   --cw-hub-raised: color-mix(in srgb, var(--cw-canvas-background) 65%, var(--cw-nav-background));
   --cw-hub-hover: color-mix(in srgb, var(--cw-canvas-background) 50%, var(--cw-nav-background));
   --cw-hub-outline: color-mix(in srgb, var(--cw-canvas-ink) 25%, var(--cw-hub-surface));
 }
-body.cw-canvas-themed:not(.cw-canvas-dark) :is(.cw-hub, .cw-hub__spaces, .cw-hub__panel, .cw-hub__toolbar, .cw-hub__course-summary) {
+body.cw-canvas-themed:not(.cw-canvas-dark) :is(.cw-hub, .cw-hub__panel) {
   background: var(--cw-hub-surface) !important;
   border-color: var(--cw-hub-outline) !important;
 }

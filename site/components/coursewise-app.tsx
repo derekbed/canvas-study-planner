@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowUpRight, Bell, CalendarDays, Check, ExternalLink, Link2, Loader2, Plus, RefreshCw } from "lucide-react";
+import { ArrowLeft, Bell, CalendarDays, Check, ExternalLink, Link2, Loader2, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,7 +16,6 @@ import CoursesView from "@/components/views/courses-view";
 import GradesView from "@/components/views/grades-view";
 import PlanView from "@/components/views/plan-view";
 import ChatView from "@/components/views/chat-view";
-
 import DashboardView from "@/components/views/dashboard-view";
 import ReviewView from "@/components/views/review-view";
 import PrivacyView from "@/components/views/privacy-view";

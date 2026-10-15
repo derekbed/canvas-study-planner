@@ -2,6 +2,7 @@
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 const defaults = { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, showCardGrades: true };
+const PREFERENCE_KEYS = Object.keys(defaults);
 const MAIN_FILES = ["insights-model.js", "course-health.js", "vendor/libheif-without-unsafe-eval.js", "course-image.js", "insights.js"];
 let saveQueue = Promise.resolve();
 let schoolQueue = Promise.resolve();
@@ -54,7 +55,6 @@ async function addSchool(origin) {
     return { origins: Object.keys(schools).sort() };
   });
 }
-
 async function restoreSchoolScripts() {
   const schools = await schoolData();
   for (const origin of Object.keys(schools)) {
@@ -101,12 +101,8 @@ async function handle(message, sender) {
   if (!validOrigin(origin) || !await chrome.permissions.contains({ origins: [`${origin}/*`] })) throw new Error("This Canvas domain is not connected.");
   switch (message.type) {
     case "cw:getPreferences": return savePreferences({});
-    case "cw:setPreferences": return savePreferences({
-      ...(message.canvasBackground === undefined ? {} : { canvasBackground: message.canvasBackground }),
-      ...(message.canvasThemeMode === undefined ? {} : { canvasThemeMode: message.canvasThemeMode }),
-      ...(message.deadlineWindowDays === undefined ? {} : { deadlineWindowDays: message.deadlineWindowDays }),
-      ...(message.showCardGrades === undefined ? {} : { showCardGrades: message.showCardGrades })
-    });
+    case "cw:setPreferences":
+      return savePreferences(Object.fromEntries(PREFERENCE_KEYS.filter(key => message[key] !== undefined).map(key => [key, message[key]])));
     case "cw:syncCourses": {
       const rows = Array.isArray(message.courses) ? message.courses : [];
       const courses = rows.slice(0, 200).filter(row => /^\d+$/.test(String(row.canvasId)) && typeof row.name === "string")

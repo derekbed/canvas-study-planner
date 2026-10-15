@@ -1,11 +1,10 @@
-const workspaceUrl = "http://localhost:5173/";
+const API = "http://localhost:5173";
+const PREFERENCE_KEYS = ["canvasBackground", "canvasThemeMode", "deadlineWindowDays", "showCardGrades"];
 if (chrome.sidePanel?.setPanelBehavior) {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 } else {
-  chrome.action.onClicked.addListener(() => chrome.tabs.create({ url: workspaceUrl }));
+  chrome.action.onClicked.addListener(() => chrome.tabs.create({ url: API + "/" }));
 }
-
-const API = "http://localhost:5173";
 // Appearance belongs to this browser and must work without an account or server.
 let appearanceQueue = Promise.resolve();
 function appearancePreferences(patch) {
@@ -38,7 +37,7 @@ async function request(path, { method = "POST", body, bearer = true } = {}) {
       headers: { ...(body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...(current ? { Authorization: `Bearer ${current.token}` } : {}) },
       ...(body === undefined ? {} : { body: body instanceof FormData ? body : JSON.stringify(body) }) });
-  } catch { throw { status: 503, message: "Coursewise is not reachable at http://localhost:5173." }; }
+  } catch { throw { status: 503, message: `Coursewise is not reachable at ${API}.` }; }
   const data = await response.json().catch(() => ({}));
   if (response.status === 401) await chrome.storage.session.remove(["extensionToken", "expiresAt"]);
   if (!response.ok) throw { status: response.status, message: typeof data.error === "string" ? data.error.slice(0, 240) : "Coursewise request failed." };
@@ -76,17 +75,9 @@ async function handle(message) {
       return { paired: false };
     }
     case "cw:getWorkspace": return request("/api/extension/workspace", { body: {} });
-    case "cw:getPreferences": {
-      return appearancePreferences();
-    }
-    case "cw:setPreferences": {
-      const patch = {};
-      if (message.canvasBackground !== undefined) patch.canvasBackground = message.canvasBackground;
-      if (message.canvasThemeMode !== undefined) patch.canvasThemeMode = message.canvasThemeMode;
-      if (message.deadlineWindowDays !== undefined) patch.deadlineWindowDays = message.deadlineWindowDays;
-      if (message.showCardGrades !== undefined) patch.showCardGrades = message.showCardGrades;
-      return appearancePreferences(patch);
-    }
+    case "cw:getPreferences": return appearancePreferences();
+    case "cw:setPreferences":
+      return appearancePreferences(Object.fromEntries(PREFERENCE_KEYS.filter(key => message[key] !== undefined).map(key => [key, message[key]])));
     case "cw:saveCourse": return request("/api/extension/course", { body: { canvasId: message.canvasId, name: message.name, code: message.code } });
     case "cw:renameCourse": return request("/api/extension/course", { body: { action: "rename", courseId: message.courseId, name: message.name } });
     case "cw:styleCourse": {
