@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { addDays, format, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { ArrowUpRight, CalendarClock, Check, Clock3, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Event, Workspace } from "@/lib/client-types";
+import type { Workspace } from "@/lib/client-types";
 import { courseFor, dateTime } from "@/lib/client-types";
 import { planWeek } from "@/lib/planner";
 

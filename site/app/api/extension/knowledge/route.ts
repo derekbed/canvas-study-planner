@@ -1,6 +1,6 @@
 import { database, now, type Course, type Event } from "@/lib/server";
 import { extensionError, extensionResponse, extensionUser, fromExtension, preflight } from "@/lib/extension";
-import { KNOWLEDGE_KEYS, briefFor, gapsFor, insightsFor, knowledgeFor, parseFacts, saveKnowledge, type KnowledgeFact, type KnowledgeKey } from "@/lib/course-knowledge";
+import { KNOWLEDGE_KEYS, briefFor, gapsFor, insightsFor, knowledgeFor, parseFacts, saveKnowledge, stripPrivateFeeds, type KnowledgeFact, type KnowledgeKey } from "@/lib/course-knowledge";
 
 export const OPTIONS = preflight;
 export async function POST(request: Request) {
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (!KNOWLEDGE_KEYS.includes(body.key as KnowledgeKey) || typeof body.value !== "string" ||
         !body.value.trim() || body.value.length > 1000) return extensionError(request, "Enter a short course fact.", 400);
     const key = body.key as KnowledgeKey;
-    const value = body.value.trim().replace(/\b(?:https?|webcal):\/\/[^\s<>"']*(?:\/feeds?\/|\.ics\b|calendar[_-]?feed)[^\s<>"']*/gi, "[private calendar link omitted]");
+    const value = stripPrivateFeeds(body.value.trim());
     const facts = parseFacts(row?.facts_json || "[]").filter(fact => fact.key !== key);
     const fact: KnowledgeFact = { key, value, sourceLabel: "Student provided", sourceMaterialId: null,
       origin: "student", confidence: "medium", updatedAt: now() };

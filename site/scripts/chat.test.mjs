@@ -14,6 +14,7 @@ const db={prepare(query){let args=[];return {bind(...values){args=values;return 
 const env={DB:db,OPENAI_API_KEY:'test-key'},modules=new Map();
 function load(filename){filename=path.resolve(root,filename);if(!path.extname(filename))filename+='.ts';if(modules.has(filename))return modules.get(filename).exports;const module={exports:{}};modules.set(filename,module);const source=ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;new vm.Script(`(function(require,module,exports){${source}\n})`,{filename}).runInThisContext()(name=>name==='cloudflare:workers'?{env}:name.startsWith('@/')?load(name.slice(2)):name.startsWith('.')?load(path.resolve(path.dirname(filename),name)):require(name),module,module.exports);return module.exports;}
 const {chatTurn,createConversation,chatManagement}=load('lib/chat'),{rankPassages,cosine}=load('lib/chat-retrieval');
+const {passagesFromMaterial}=load('lib/course-knowledge');
 const {selfHarmSupport}=load('lib/study-safety');
 const extensionChats=load('app/api/extension/chats/route.ts'),{hashSecret}=load('lib/extension.ts');
 for(const user of ['a','b']){sql.prepare('INSERT INTO courses(id,user_id,name,created_at) VALUES (?,?,?,?)').run(user+'-course',user,user+' course','2026-01-01');sql.prepare('INSERT INTO preferences(user_id,value) VALUES (?,?)').run(user,'{"consent":true}');sql.prepare('INSERT INTO materials(id,user_id,course_id,name,extracted_text,created_at) VALUES (?,?,?,?,?,?)').run(user+'-file',user,user+'-course','Syllabus.txt',user==='a'?'The final examination covers motion and momentum. Late work loses ten percent.':'SECRET_OTHER_STUDENT','2026-01-01');}
@@ -63,3 +64,10 @@ test('explicit self-harm messages receive human-help guidance without reaching O
 });
 test('active turns reject concurrent sends and deletion; deletion removes the transcript',async()=>{const thread=await createConversation('a','a-course');await chatTurn('a',payload(thread));sql.prepare('UPDATE chat_conversations SET lease_until=? WHERE id=?').run(Date.now()+100000,thread.id);await assert.rejects(()=>chatTurn('a',payload(thread)),/already/);await assert.rejects(()=>chatManagement('a',request({action:'delete',id:thread.id})),/Wait/);sql.prepare('UPDATE chat_conversations SET lease_until=0 WHERE id=?').run(thread.id);await chatManagement('a',request({action:'delete',id:thread.id}));assert.equal(sql.prepare('SELECT count(*) n FROM chat_messages WHERE conversation_id=?').get(thread.id).n,0);});
 test('retrieval combines semantic matches and terms while respecting evidence size',()=>{assert.equal(cosine([1,0],[1,0]),1);assert.equal(cosine([1],[1,0]),0);const passages=Array.from({length:20},(_,i)=>({id:String(i),material_id:'m',source_label:'page '+i,text:(i===5?'late policy':'motion')+'x'.repeat(900)}));const hits=rankPassages(passages,'late policy',passages.map((_,i)=>i===5?.9:0));assert.equal(hits[0].id,'5');assert.ok(hits.length<=6);assert.ok(hits.reduce((n,p)=>n+p.text.length,0)<=6000);});
+test('later material content remains searchable and an uncached lexical match can win',()=>{
+  const passages=passagesFromMaterial({id:'long',name:'Reading.txt',extracted_text:'intro '.repeat(50000)+'\n\nThe capstone exam covers orbital mechanics.'});
+  assert.ok(passages.length>250);
+  assert.ok(passages.some(p=>p.text.includes('orbital mechanics')));
+  const hits=rankPassages([{id:'cached',material_id:'x',source_label:'Reading.txt',text:'Unrelated notes.'},{id:'uncached',material_id:'x',source_label:'Reading.txt',text:'The capstone exam covers orbital mechanics.'}],'orbital mechanics',[0.1,undefined]);
+  assert.equal(hits[0].id,'uncached');
+});

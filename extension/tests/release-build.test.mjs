@@ -14,7 +14,9 @@ test("release package uses only the configured school and HTTPS site", () => {
     const manifest = JSON.parse(readFileSync(join(out, "manifest.json"), "utf8"));
     assert.deepEqual(manifest.host_permissions, ["https://canvas.example.edu/*", "https://study.example.edu/*"]);
     assert.ok(manifest.icons["128"]);
-    for (const file of ["background.js", "sidepanel.js", "sidepanel.html", "content.js", "canvas-app.js", "insights-model.js", "course-health.js", "appearance-frame.js"]) {
+    assert.equal(manifest.content_scripts[0].run_at, "document_start");
+    assert.deepEqual(manifest.content_scripts[0].js, ["palette.js", "theme-bootstrap.js"]);
+    for (const file of ["background.js", "sidepanel.js", "sidepanel.html", "content.js", "canvas-app.js", "insights-model.js", "course-health.js", "appearance-frame.js", "theme-bootstrap.js", "theme-bootstrap.css"]) {
       const code = readFileSync(join(out, file), "utf8");
       assert.doesNotMatch(code, /localhost:5173|canvas\.upenn\.edu|local prototype/, file);
     }

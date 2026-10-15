@@ -3,7 +3,7 @@
   if (location.origin !== "https://canvas.upenn.edu") return;
   const model = globalThis.CoursewiseInsightsModel;
   const palette = globalThis.CoursewiseCanvasPalette;
-  const state = { active: false, tab: "today", courseId: "all", category: "all", comingUpCollapsed: false, pageHistory: [], workspace: null, preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light" },
+  const state = { active: false, tab: "today", courseId: "all", category: "all", comingUpCollapsed: false, pageHistory: [], workspace: null, preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", ...palette.cachedPreferences() },
     live: { courses: [], work: [], announcements: [], calendar: [], errors: [] }, loading: false, busy: false,
     chatCourse: "", chatId: "", chats: [], chatMessages: [], chatLoading: false, chatMore: false, chatGeneration: 0, chatRetry: null, chatPending: null, chatError: "", session: null, pairCode: "", question: "", includePage: false, selected: new Set(), sourceTouched: false, answer: null,
     message: "", extensionDisconnected: false, knowledge: new Map(), knowledgeDrafts: new Map(), dismissedAnnouncements: new Set(), page: {}, host: null, shell: null, hidden: null, activePath: "", previousFocus: null };
@@ -16,7 +16,8 @@
   };
   const append = (parent, ...children) => { children.filter(Boolean).forEach(child => parent.append(child)); return parent; };
   const button = (label, fn, className = "") => { const node = el("button", label, className); node.type = "button"; node.addEventListener("click", fn); return node; };
-  const date = value => { const time = Date.parse(value || ""); return Number.isFinite(time) ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(time) : "Date unavailable"; };
+  const dateTime = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const date = value => { const time = Date.parse(value || ""); return Number.isFinite(time) ? dateTime.format(time) : "Date unavailable"; };
   const clean = (value, max = 180) => String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
   const titleCase = value => String(value).replaceAll("_", " ").replace(/\b[a-z]/g, letter => letter.toUpperCase());
   const factOrder = ["exam_dates", "grading_weights", "assignment_schedule", "course_topics", "late_policy", "readings", "attendance_policy", "academic_integrity_policy", "collaboration_policy", "office_hours", "instructor_contact"];
@@ -76,11 +77,9 @@
     if (state.active) control.setAttribute("aria-current", "page"); else control.removeAttribute("aria-current");
   }
   function applyCanvasTheme() {
-    const selected = /^#[0-9a-f]{6}$/i.test(state.preferences.canvasBackground) ? state.preferences.canvasBackground : "#f7faf9";
-    const mode = ["light", "dark", "system"].includes(state.preferences.canvasThemeMode) ? state.preferences.canvasThemeMode : "light";
-    const dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-    palette.applyTheme(selected, dark);
+    palette.applyPreferences(state.preferences);
   }
+  const courseColors = { blue: "#c4d7f2", lavender: "#d4c7f0", peach: "#f3ceb5", mint: "#bce2cc", butter: "#efe1a3", rose: "#efc2d0", sky: "#bcdff1" };
   function applyCanvasBranding() {
     const setVisibleName = (node, name) => {
       let target = node;
@@ -109,20 +108,8 @@
         const title = card.querySelector(".ic-DashboardCard__header-title");
         if (title?.textContent.trim()) setVisibleName(title, course.name);
         const hero = card.querySelector(".ic-DashboardCard__header_hero");
-        const pictureHost = card.querySelector(".ic-DashboardCard__header_image") || hero;
-        if (!pictureHost) continue;
-        const colors = { blue: "#c4d7f2", lavender: "#d4c7f0", peach: "#f3ceb5", mint: "#bce2cc", butter: "#efe1a3", rose: "#efc2d0", sky: "#bcdff1" };
-        if (hero && colors[course.color]) hero.style.setProperty("background-color", colors[course.color], "important");
-        let picture = card.querySelector(".cw-custom-course-picture");
-        if (course.image_url) {
-          hero?.classList.toggle("cw-custom-course-header", hero === pictureHost);
-          pictureHost.classList.add("cw-custom-course-header");
-          if (!picture) { picture = el("img", undefined, "cw-custom-course-picture"); picture.alt = ""; }
-          if (picture.parentElement !== pictureHost) pictureHost.prepend(picture);
-          if (picture.getAttribute("src") !== course.image_url) picture.src = course.image_url;
-        } else {
-          picture?.remove(); hero?.classList.remove("cw-custom-course-header"); pictureHost.classList.remove("cw-custom-course-header");
-        }
+        if (hero && courseColors[course.color]) hero.style.setProperty("background-color", courseColors[course.color], "important");
+        globalThis.CoursewiseAppearance?.paintCoursePicture(card, course.image_url || "");
       }
     }
   }
@@ -151,13 +138,13 @@
     while (host.firstChild) original.append(host.firstChild);
     original.hidden = true;
     host.append(original, shell);
-    state.hidden = original; state.shell = shell; state.active = true;
+    state.hidden = original; state.shell = shell; state.active = true; state.session = null;
     state.activePath = location.pathname;
     document.body.classList.add("cw-canvas-app-active");
     window.dispatchEvent(new Event("cw-coursewise-visibility"));
     sizeWorkspace();
     history.pushState({ ...(history.state || {}), coursewise: true }, "", location.href);
-    updateNav(); render(); loadAll();
+    updateNav(); loadAll();
     shell.querySelector("h1")?.focus();
   }
   function deactivate() {
@@ -333,16 +320,18 @@
     else items.forEach(item => box.append(draw(item)));
     return box;
   }
+  function canvasLink(item) {
+    const link = el("a", item.title), url = safeCanvasUrl(item.url);
+    if (url) link.href = url;
+    return link;
+  }
   function workRow(item) {
     const row = el("div", undefined, "cw-row");
-    const link = el("a", item.title); link.href = safeCanvasUrl(item.url) || "#";
-    if (link.href.endsWith("#")) link.removeAttribute("href");
-    append(row, link, el("span", `${date(item.dueAt || item.due_at)} · ${item.overdue ? "Overdue" : "Upcoming"}`, "cw-muted"));
+    append(row, canvasLink(item), el("span", `${date(item.dueAt || item.due_at)} · ${item.overdue ? "Overdue" : "Upcoming"}`, "cw-muted"));
     return row;
   }
   function announceRow(item) {
-    const row = el("div", undefined, "cw-row"), link = el("a", item.title);
-    link.href = safeCanvasUrl(item.url) || "#"; if (link.href.endsWith("#")) link.removeAttribute("href");
+    const row = el("div", undefined, "cw-row"), link = canvasLink(item);
     const check = el("input"); check.type = "checkbox"; check.checked = false; check.setAttribute("aria-label", `Dismiss announcement: ${item.title}`);
     check.addEventListener("change", () => dismissAnnouncement(item));
     const label = el("label", undefined, "cw-announcement-check"); append(label, check, el("span", "Mark as read"));
@@ -369,8 +358,8 @@
       work.push({ ...item, dueAt: item.due_at, courseId: course?.live?.id, overdue: Date.parse(item.due_at) < Date.now() });
     work.sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
     announcements.sort((a, b) => Date.parse(b.postedAt) - Date.parse(a.postedAt));
-    return { assignments: work.filter(item => item.kind !== "assessment" && !/\b(quiz|exam|midterm|final|test)\b/i.test(item.title)),
-      assessments: work.filter(item => item.kind === "assessment" || /\b(quiz|exam|midterm|final|test)\b/i.test(item.title)), announcements, calendar };
+    const isAssessment = item => item.kind === "assessment" || /\b(quiz|exam|midterm|final|test)\b/i.test(item.title);
+    return { assignments: work.filter(item => !isAssessment(item)), assessments: work.filter(isAssessment), announcements, calendar };
   }
   function renderToday() {
     const body = el("div", undefined, "cw-main-content"), data = scopedData();
@@ -395,7 +384,7 @@
   }
   function renderCourses() {
     const body = el("div", undefined, "cw-main-content"), cards = el("div", undefined, "cw-cards");
-    const all = courseList(); if (!all.length) return empty(state.live.errors.length ? state.live.errors.join(" · ") : "No dashboard courses found. Favorite courses in Canvas, then refresh.");
+    const all = courseList(); if (!all.length) return empty(state.loading ? "Loading courses from Canvas…" : state.live.errors.length ? state.live.errors.join(" · ") : "No dashboard courses found. Favorite courses in Canvas, then refresh.");
     const current = selectedCourse();
     if (current) {
       const detail = el("section", undefined, "cw-panel"), grade = current.live?.grade?.score ?? current.saved?.current_grade;
@@ -797,10 +786,14 @@
       if (state.tab === key) control.setAttribute("aria-current", "page"); side.append(control);
     }
     const content = el("main", undefined, "cw-content");
-    if (state.loading) content.append(el("p", "Loading your workspace…", "cw-note"));
-    if (state.message) { const message = el("p", state.message, "cw-status"); message.setAttribute("role", "status"); content.append(message); }
+    if (state.message && !(state.loading && !state.session)) { const message = el("p", state.message, "cw-status"); message.setAttribute("role", "status"); content.append(message); }
     if (state.extensionDisconnected) content.append(button("Refresh Canvas", () => location.reload(), "cw-primary"));
-    if (!state.session?.paired) {
+    if (state.loading && !state.session) {
+      const waiting = el("section", undefined, "cw-panel");
+      waiting.setAttribute("role", "status");
+      append(waiting, el("h2", "Connecting to Coursewise…"), el("p", "Loading your Canvas workspace and session."));
+      content.append(waiting);
+    } else if (!state.session?.paired) {
       const box = el("section", undefined, "cw-panel");
       append(box, el("h2", "Pair your local Coursewise workspace"),
         el("p", "Pair once in the Coursewise tab. Daily course work stays here in Canvas."),
@@ -819,7 +812,8 @@
     if (!state.comingUpCollapsed) {
       const railBody = el("div"); railBody.id = "cw-coming-up-body";
       railBody.append(el("h2", "Coming up"));
-      const soon = scopedData().assignments.concat(scopedData().assessments).sort((a,b) => Date.parse(a.dueAt)-Date.parse(b.dueAt)).slice(0, 5);
+      const { assignments, assessments } = scopedData();
+      const soon = assignments.concat(assessments).sort((a,b) => Date.parse(a.dueAt)-Date.parse(b.dueAt)).slice(0, 5);
       if (soon.length) soon.forEach(item => railBody.append(workRow(item))); else railBody.append(empty("No upcoming work found."));
       if (state.session?.paired) railBody.append(button("Sign out", signOut, "cw-text-button"));
       rail.append(railBody);
@@ -829,48 +823,46 @@
     append(layout, side, content, rail); shell.append(layout);
   }
   function initialize() {
-  navItem();
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local") return;
-    if (changes.cwCanvasPreferences?.newValue) {
-      Object.assign(state.preferences, changes.cwCanvasPreferences.newValue);
-      applyCanvasTheme();
-    }
-    if (changes.cwCourseAppearanceUpdated) {
-      broker("getWorkspace").then(workspace => { state.workspace = workspace; applyCanvasBranding(); render(); }).catch(() => {});
-    }
-  });
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    if (state.preferences.canvasThemeMode === "system") applyCanvasTheme();
-  });
-  chrome.storage?.local?.get?.(["dismissedAnnouncements", "cwCanvasPreferences"]).then(data => {
-    if (data?.cwCanvasPreferences) { Object.assign(state.preferences, data.cwCanvasPreferences); applyCanvasTheme(); }
-    if (Array.isArray(data?.dismissedAnnouncements)) { state.dismissedAnnouncements = new Set(data.dismissedAnnouncements.filter(value => typeof value === "string")); render(); }
-  }).catch(() => {});
-  // Load lightweight account branding even before the Coursewise tab is opened,
-  // so saved names and the selected Canvas background appear on the dashboard.
-  Promise.allSettled([broker("getWorkspace"), broker("getPreferences")]).then(([workspace, preferences]) => {
-    if (workspace.status === "fulfilled") state.workspace = workspace.value;
-    if (preferences.status === "fulfilled") state.preferences = preferences.value;
-    if (preferences.status === "fulfilled") applyCanvasTheme();
-    if (workspace.status === "fulfilled") applyCanvasBranding();
-  });
-  const observer = new MutationObserver(() => {
-    if (state.active && (!state.shell?.isConnected || location.pathname !== state.activePath)) {
-      if (state.shell?.isConnected) deactivate();
-      else { state.active = false; state.shell = null; state.hidden = null; updateNav(); }
-    }
-    if (!document.getElementById("cw-canvas-nav-item")) navItem();
-    if (state.workspace) applyCanvasBranding();
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-  // Canvas can mount the global header after the initial content-script pass.
-  let navRetries = 0;
-  const retryNav = setInterval(() => {
-    navRetries += 1;
     navItem();
-    if (document.getElementById("cw-canvas-nav-item") || navRetries >= 30) clearInterval(retryNav);
-  }, 500);
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (changes.cwCanvasPreferences?.newValue) {
+        Object.assign(state.preferences, changes.cwCanvasPreferences.newValue);
+        applyCanvasTheme();
+      }
+      if (changes.cwCourseAppearanceUpdated) {
+        broker("getWorkspace").then(workspace => { state.workspace = workspace; applyCanvasBranding(); render(); }).catch(() => {});
+      }
+    });
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if (state.preferences.canvasThemeMode === "system") applyCanvasTheme();
+    });
+    chrome.storage?.local?.get?.(["dismissedAnnouncements", "cwCanvasPreferences"]).then(data => {
+      if (data?.cwCanvasPreferences) { Object.assign(state.preferences, data.cwCanvasPreferences); applyCanvasTheme(); }
+      if (Array.isArray(data?.dismissedAnnouncements)) { state.dismissedAnnouncements = new Set(data.dismissedAnnouncements.filter(value => typeof value === "string")); render(); }
+    }).catch(() => {});
+    // Load lightweight account branding even before the Coursewise tab is opened,
+    // so saved names and the selected Canvas background appear on the dashboard.
+    Promise.allSettled([broker("getWorkspace"), broker("getPreferences")]).then(([workspace, preferences]) => {
+      if (preferences.status === "fulfilled") { state.preferences = preferences.value; applyCanvasTheme(); }
+      if (workspace.status === "fulfilled") { state.workspace = workspace.value; applyCanvasBranding(); }
+    });
+    const observer = new MutationObserver(() => {
+      if (state.active && (!state.shell?.isConnected || location.pathname !== state.activePath)) {
+        if (state.shell?.isConnected) deactivate();
+        else { state.active = false; state.shell = null; state.hidden = null; updateNav(); }
+      }
+      if (!document.getElementById("cw-canvas-nav-item")) navItem();
+      if (state.workspace) applyCanvasBranding();
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    // Canvas can mount the global header after the initial content-script pass.
+    let navRetries = 0;
+    const retryNav = setInterval(() => {
+      navRetries += 1;
+      navItem();
+      if (document.getElementById("cw-canvas-nav-item") || navRetries >= 30) clearInterval(retryNav);
+    }, 500);
   }
   let initialized = false;
   function startAfterConsent() {

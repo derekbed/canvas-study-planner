@@ -9,10 +9,14 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((pairs, value, inde
 }, []));
 const output = resolve(args.out || join(source, "local-release"));
 if (output === source || source.startsWith(output + "/")) throw new Error("Choose a separate output directory.");
-const files = ["icon16.png", "icon32.png", "icon48.png", "icon128.png", "insights-model.js", "course-health.js", "palette.js", "course-image.js", "insights.js", "insights.css", "appearance.css", "appearance-frame.js", "appearance-frame.css", "vendor/libheif-without-unsafe-eval.js", "vendor/LICENSE-heic-to.txt"];
+const files = ["icon16.png", "icon32.png", "icon48.png", "icon128.png", "insights-model.js", "course-health.js", "palette.js", "theme-bootstrap.js", "theme-bootstrap.css", "course-image.js", "insights.js", "insights.css", "appearance.css", "appearance-frame.js", "appearance-frame.css", "vendor/libheif-without-unsafe-eval.js", "vendor/LICENSE-heic-to.txt"];
 for (const file of files) {
   const target = join(output, file);
   await mkdir(dirname(target), { recursive: true });
+  if (/^icon(?:16|32|48|128)\.png$/.test(file)) {
+    await copyFile(join(source, "testing-icons", file), target);
+    continue;
+  }
   if (!file.endsWith(".js")) { await copyFile(join(source, file), target); continue; }
   let content = await readFile(join(source, file), "utf8");
   if (file === "insights-model.js") content = content.replace('const ORIGIN = "https://canvas.upenn.edu";', "const ORIGIN = location.origin;");
@@ -35,6 +39,7 @@ for (const file of ["background.js", "sidepanel.html", "sidepanel.js", "privacy.
 await copyFile(join(source, "sidepanel.css"), join(output, "sidepanel.css"));
 const manifest = JSON.parse(await readFile(join(source, "manifest.json"), "utf8"));
 manifest.name = "Coursewise for Canvas";
+manifest.version = "0.1.4";
 manifest.description = "Customize Canvas and view local course deadlines, grades, and announcements.";
 manifest.minimum_chrome_version = "119";
 delete manifest.key;

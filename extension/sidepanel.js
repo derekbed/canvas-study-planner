@@ -92,7 +92,7 @@ $("signout").addEventListener("click", async () => {
   const old = token; await forgetToken();
   if (old) try { await api("/api/extension/session", {}, old); } catch { /* local token already cleared */ }
 });
-$("new-chat").addEventListener("click", () => { if (busy) return; conversationId = null; chatRetry = null; $("chat-history").replaceChildren(); $("answer-box").hidden = true; });
+$("new-chat").addEventListener("click", () => { if (busy) return; conversationId = null; chatRetry = null; $("chat-history").replaceChildren(); });
 $("ask-form").addEventListener("submit", async event => {
   event.preventDefault();
   if (busy) return;
@@ -101,7 +101,7 @@ $("ask-form").addEventListener("submit", async event => {
   if (!token || expiresAt <= Date.now()) { await forgetToken(); $("request-status").textContent = "Pair the extension before asking."; return; }
   const tab = await currentTab();
   if (capturedTab && (tab?.id !== capturedTab.id || tab.url !== capturedTab.url)) { stale = true; renderContext(); $("request-status").textContent = "Canvas changed. Refresh context before submitting."; return; }
-  busy = true; $("request-status").textContent = "Asking Coursewise…"; $("answer-box").hidden = true; renderContext();
+  busy = true; $("request-status").textContent = "Asking Coursewise…"; renderContext();
   try {
     const key = context?.url?.match(/\/courses\/(\d+)/)?.[1] || context?.courseCode || context?.courseName || "page";
     if (key !== conversationKey) { conversationKey = key; conversationId = null; chatRetry = null; $("chat-history").replaceChildren(); }
@@ -113,10 +113,7 @@ $("ask-form").addEventListener("submit", async event => {
     const sources = document.createElement("details"), summary = document.createElement("summary"); summary.textContent = "Sources supplied"; sources.append(summary);
     for (const source of data.sources || []) { const line = document.createElement("p"); line.textContent = source; sources.append(line); } turn.append(sources); $("chat-history").append(turn);
     $("question").value = ""; $("question").placeholder = "Ask a follow-up…";
-    $("answer").textContent = data.answer;
-    $("sources").replaceChildren();
-    for (const source of data.sources || []) { const li = document.createElement("li"); li.textContent = source; $("sources").append(li); }
-    $("answer-box").hidden = true; $("request-status").textContent = "Saved to your Coursewise conversations.";
+    $("request-status").textContent = "Saved to your Coursewise conversations.";
   } catch (error) {
     if (error.status === 401) await forgetToken();
     $("request-status").textContent = error.message + (error.status ? "" : ` Check that Coursewise is running at ${API}.`);

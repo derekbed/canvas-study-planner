@@ -50,7 +50,8 @@ export function briefFor(course: Pick<Course, "name" | "code">, facts: Knowledge
   return lines.join("\n") || course.name;
 }
 export function passagesFromMaterial(material: Pick<Material, "id" | "name" | "extracted_text">): IndexedPassage[] {
-  const source = material.extracted_text.slice(0, 160_000);
+  // Match the extraction limit so later pages remain searchable.
+  const source = material.extracted_text.slice(0, 500_000);
   const parts = source.split(/\[Page (\d+)\]\n/);
   const sections: { label: string; text: string }[] = [];
   if (parts.length > 1) for (let i = 1; i < parts.length; i += 2) sections.push({ label: `${material.name}, page ${parts[i]}`, text: parts[i + 1] || "" });
@@ -58,7 +59,7 @@ export function passagesFromMaterial(material: Pick<Material, "id" | "name" | "e
   const result: IndexedPassage[] = [];
   for (const section of sections) {
     const normalized = stripPrivateFeeds(section.text).replace(/\s+/g, " ").trim();
-    for (let offset = 0; offset < normalized.length && result.length < 250; offset += 850) {
+    for (let offset = 0; offset < normalized.length; offset += 850) {
       const text = normalized.slice(offset, offset + 950);
       if (text.length >= 25) result.push({ id: crypto.randomUUID(), material_id: material.id,
         source_label: `${section.label}${offset ? `, passage ${Math.floor(offset / 850) + 1}` : ""}`, text });

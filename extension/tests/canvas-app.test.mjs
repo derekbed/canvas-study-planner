@@ -19,6 +19,7 @@ function harness(favorites, fail = false, chromeRuntime = { id: 'test-extension'
     }
   });
   vm.runInContext(model, context);
+  vm.runInContext(fs.readFileSync(new URL('../palette.js', import.meta.url), 'utf8'), context);
   // Expose the app's data layer before its DOM startup code runs.
   vm.runInContext(source.slice(0, source.indexOf('\n  function initialize() {')) +
     '\n render = () => {}; globalThis.app = { state, loadLive, courseList, broker, ask, loadCourseChats }; })();', context);
