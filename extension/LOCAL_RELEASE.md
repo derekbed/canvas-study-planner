@@ -1,6 +1,8 @@
 # Coursewise local extension
 
-This first-release edition provides Canvas appearance, dashboard course cards, grades, deadlines, course health, announcements, and read-state organization. It has no Coursewise website, account pairing, chat, AI requests, uploaded materials, or backend. Canvas data is fetched through the student's signed-in Canvas browser session and used on the page. Appearance choices, connected domains, course names and pictures, and read-state IDs are saved in Chrome local storage.
+The local build is version **0.1.4**. It provides Canvas appearance, dashboard course cards, grades, deadlines, course health, announcements, and read-state organization. It has no Coursewise website, account pairing, chat, AI requests, uploaded materials, or backend. Canvas data is fetched through the student's signed-in Canvas browser session and used on the page. Appearance choices, connected domains, course names and pictures, and read-state IDs are saved in Chrome local storage.
+
+The selected background and light/dark mode are also cached in Canvas site storage so subsequent page loads can apply the same theme before extension storage responds. The first visit after this update initializes that cache.
 
 ## Build and try it
 
@@ -8,7 +10,9 @@ This first-release edition provides Canvas appearance, dashboard course cards, g
 node extension/scripts/build-local-release.mjs --out extension/local-release
 ```
 
-Load `extension/local-release` through `chrome://extensions` → Developer mode → Load unpacked. Click its toolbar button, read and accept the disclosure, then enter the HTTPS address of your school's Canvas site. Chrome asks for access to that exact school domain. Reload open Canvas tabs after connecting. Coursewise works with multiple connected schools, keeping course appearance and read-state separate by Canvas origin. Use the Dashboard three-dot menu → Coursewise appearance.
+Load `extension/local-release` through `chrome://extensions` → Developer mode → Load unpacked. Click its toolbar button, read and accept the disclosure, then enter the HTTPS address of your school's Canvas site. Chrome asks for access to that exact school domain. Reload open Canvas tabs after connecting. Coursewise works with multiple connected schools, keeping course appearance and read-state separate by Canvas origin. Use the Dashboard three-dot menu → Coursewise settings for appearance and the next-deadline window.
+
+This local testing build uses a grey toolbar icon to distinguish it from older blue packages and the blue prototype. After rebuilding, reload the unpacked extension in `chrome://extensions` to see the new icon.
 
 The generated package requests no site access at install time. It declares optional HTTPS host access and asks for one school domain at a time. It includes no embedded workspace, page-text extractor, pairing API, or AI code. The existing website and AI source remain in this repository for a later edition.
 

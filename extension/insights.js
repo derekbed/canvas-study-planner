@@ -11,18 +11,23 @@
     requested: new Set(), errors: new Map(), loading: false, generation: 0,
     active: "assignment", expanded: new Set(),
     read: new Set(), showRead: false, lastHidden: null, storageError: false,
-    preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light" }, workspace: null, railWidth: 320, railCollapsed: false, courseExpanded: false, appearanceCourseId: "", horizontalView: false, horizontalCardHeight: 160
+    preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, ...palette.cachedPreferences() }, workspace: null, railWidth: 320, railCollapsed: false, courseExpanded: false, appearanceCourseId: "", horizontalView: false, horizontalCardHeight: 160, cardScale: 100
   };
   const READ_KEY = "cwReadAssignmentsV1";
   const RAIL_WIDTH_KEY = "cwRailWidthV2";
   const HORIZONTAL_CARD_HEIGHT_KEY = "cwHorizontalCardHeightV1";
+  const CARD_SCALE_KEY = "cwCardScaleV1";
   const MIN_HORIZONTAL_CARD_HEIGHT = 160;
   const MAX_HORIZONTAL_CARD_HEIGHT = 500;
+  const MIN_CARD_SCALE = 80;
+  const MAX_CARD_SCALE = 150;
   const MIN_RAIL_WIDTH = 320;
   const itemKey = item => item.courseId + ":" + item.id;
   const healthNames = { "on-track": "On track", watch: "Watch", "needs-attention": "Needs attention", "limited-data": "Limited data" };
   function healthFor(id) {
     if (!healthEngine || !state.courses.has(id)) return null;
+    if ((!state.work.has(id) && !state.errors.has("work:" + id)) ||
+        (!state.announcements.has(id) && !state.errors.has("announcements:" + id))) return null;
     const key = [id, state.syncTimes.get(id) || "", state.work.has(id), state.announcements.has(id), [...state.read].join(","), state.generation, Math.floor(Date.now() / 3600000)].join(":");
     const cached = state.healthCache.get(id);
     if (cached?.key === key) return cached.value;
@@ -120,7 +125,7 @@
     const selected = /^#[0-9a-f]{6}$/i.test(state.preferences.canvasBackground) ? state.preferences.canvasBackground : "#f7faf9";
     const mode = ["light", "dark", "system"].includes(state.preferences.canvasThemeMode) ? state.preferences.canvasThemeMode : "light";
     const dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-    palette.applyTheme(selected, dark);
+    palette.applyTheme(selected, dark, mode);
   }
   function effectiveDarkMode() {
     return state.preferences.canvasThemeMode === "dark" || (state.preferences.canvasThemeMode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
@@ -132,13 +137,13 @@
     if (status) status.textContent = "Saving…";
     const previous = { ...state.preferences };
     Object.assign(state.preferences, patch);
-    applyBackground(); syncAppearanceModeControls();
+    applyBackground(); syncAppearanceModeControls(); renderCards();
     try {
       Object.assign(state.preferences, await broker("setPreferences", patch));
       if (status) status.textContent = "Saved.";
     }
     catch (error) {
-      Object.assign(state.preferences, previous); applyBackground(); syncAppearanceModeControls();
+      Object.assign(state.preferences, previous); applyBackground(); syncAppearanceModeControls(); renderCards();
       const status = document.querySelector(".cw-appearance-status"); if (status) status.textContent = error.message;
     }
     finally { controls.forEach(control => { control.disabled = false; }); syncAppearanceModeControls(); }
@@ -151,6 +156,8 @@
     if (note) note.hidden = !dark;
     const mode = document.querySelector('.cw-appearance-dialog select[aria-label="Canvas appearance mode"]');
     if (mode) mode.value = state.preferences.canvasThemeMode || "light";
+    const deadlineWindow = document.querySelector('.cw-appearance-dialog select[aria-label="Next deadline window"]');
+    if (deadlineWindow) deadlineWindow.value = String(deadlineWindowDays());
     const picker = document.querySelector('.cw-appearance-dialog input[type="color"]');
     if (picker) picker.value = palette.background(state.preferences.canvasBackground || "#f7faf9");
     document.querySelectorAll(".cw-appearance-dialog [data-background-color]").forEach(swatch => {
@@ -164,8 +171,8 @@
     backdrop.addEventListener("close", () => backdrop.remove());
     const box = node("section", undefined, "cw-appearance-dialog");
     const head = node("header", undefined, "cw-appearance-dialog__head");
-    const title = node("h2", "Canvas appearance"); title.id = "cw-appearance-title";
-    const close = node("button", "×", "cw-appearance-close"); close.type = "button"; close.setAttribute("aria-label", "Close appearance settings"); close.addEventListener("click", () => backdrop.close());
+    const title = node("h2", "Coursewise settings"); title.id = "cw-appearance-title";
+    const close = node("button", "×", "cw-appearance-close"); close.type = "button"; close.setAttribute("aria-label", "Close Coursewise settings"); close.addEventListener("click", () => backdrop.close());
     head.append(title, close); box.append(head);
     const modeLabel = node("label", "Appearance mode", "cw-appearance-field");
     const modeSelect = node("select"); modeSelect.setAttribute("aria-label", "Canvas appearance mode");
@@ -173,6 +180,12 @@
     modeSelect.value = state.preferences.canvasThemeMode || "light";
     modeSelect.addEventListener("change", () => saveAppearancePreferences({ canvasThemeMode: modeSelect.value }));
     modeLabel.append(modeSelect); box.append(modeLabel);
+    const deadlineLabel = node("label", "Show next deadline within", "cw-appearance-field");
+    const deadlineSelect = node("select"); deadlineSelect.setAttribute("aria-label", "Next deadline window");
+    [[1, "1 day"], [3, "3 days"], [7, "1 week"], [14, "2 weeks"], [30, "30 days"]].forEach(([days, label]) => { const option = node("option", label); option.value = String(days); deadlineSelect.append(option); });
+    deadlineSelect.value = String(deadlineWindowDays());
+    deadlineSelect.addEventListener("change", () => saveAppearancePreferences({ deadlineWindowDays: Number(deadlineSelect.value) }));
+    deadlineLabel.append(deadlineSelect); box.append(deadlineLabel);
     const darkNote = node("p", "Dark mode uses one fixed dark colorway.", "cw-appearance-dark-note"); box.append(darkNote);
     const colorways = node("div", undefined, "cw-appearance-light-options");
     colorways.append(node("strong", "Light background color"), node("span", "Choose a pastel or set a custom color.", "cw-hub__appearance-help"));
@@ -184,55 +197,60 @@
     });
     const picker = node("input"); picker.type = "color"; picker.value = palette.background(state.preferences.canvasBackground); picker.setAttribute("aria-label", "Custom Canvas background color"); picker.addEventListener("change", () => saveAppearancePreferences({ canvasBackground: picker.value }));
     row.append(node("span", "Custom", "cw-hub__appearance-help"), picker); colorways.append(row); box.append(colorways);
-    const courseArea = node("div", undefined, "cw-appearance-courses");
-    courseArea.append(node("strong", "Course appearance"), node("span", "Choose a saved course to change its color or picture.", "cw-hub__appearance-help"));
-    const courses = state.workspace?.courses || [];
-    if (courses.length) {
-      const courseSelect = node("select"); courseSelect.setAttribute("aria-label", "Course to customize");
-      const first = node("option", "Choose a course"); first.value = ""; courseSelect.append(first);
-      courses.forEach(course => { const option = node("option", course.name); option.value = course.id; courseSelect.append(option); });
-      const currentRoute = route();
-      const routeCourse = currentRoute?.type === "course" ? courses.find(course => String(course.canvas_id) === currentRoute.id)?.id : "";
-      courseSelect.value = state.appearanceCourseId || routeCourse || "";
-      const details = node("div", undefined, "cw-appearance-course-controls");
-      const courseColors = [["blue", "Blue"], ["lavender", "Lavender"], ["peach", "Peach"], ["mint", "Mint"], ["butter", "Butter"], ["rose", "Rose"], ["sky", "Sky"], ["teal", "Teal"], ["violet", "Violet"], ["orange", "Orange"]];
-      const saveCourseAppearance = async (course, color, source) => {
-        const controls = [...box.querySelectorAll("select,input,button:not(.cw-appearance-close)")];
-        controls.forEach(control => { control.disabled = true; });
-        const status = box.querySelector(".cw-appearance-status");
+    const status = node("p", "", "cw-appearance-status"); status.setAttribute("role", "status"); box.append(status);
+    backdrop.append(box); return backdrop;
+  }
+  function coursePicturePanel(courseId) {
+    const course = state.workspace?.courses?.find(item => String(item.id) === String(courseId));
+    if (!course) return null;
+    const backdrop = node("dialog", undefined, "cw-appearance-backdrop");
+    backdrop.setAttribute("aria-labelledby", "cw-course-picture-title");
+    backdrop.addEventListener("click", event => { if (event.target === backdrop) backdrop.close(); });
+    backdrop.addEventListener("close", () => backdrop.remove());
+    const box = node("section", undefined, "cw-appearance-dialog");
+    const head = node("header", undefined, "cw-appearance-dialog__head");
+    const title = node("h2", `${course.name} picture`); title.id = "cw-course-picture-title";
+    const close = node("button", "×", "cw-appearance-close"); close.type = "button"; close.setAttribute("aria-label", "Close course picture settings"); close.addEventListener("click", () => backdrop.close());
+    head.append(title, close); box.append(head);
+    const details = node("div", undefined, "cw-appearance-course-controls");
+    let pendingImageUrl = null, pendingFileName = "";
+    const status = node("p", "", "cw-appearance-status"); status.setAttribute("role", "status");
+    const renderPicture = () => {
+      details.replaceChildren();
+      const previewUrl = pendingImageUrl === null ? course.image_url : pendingImageUrl;
+      const upload = node("input"); upload.type = "file"; upload.accept = globalThis.CoursewiseCourseImage.accept; upload.setAttribute("aria-label", `Choose picture for ${course.name}`);
+      const uploadLabel = node("label", "Choose course picture", "cw-appearance-upload"); uploadLabel.append(upload); details.append(uploadLabel);
+      if (previewUrl) { const preview = node("img", undefined, "cw-appearance-preview"); preview.src = previewUrl; preview.alt = `${course.name} picture preview`; details.append(preview); }
+      if (pendingFileName) details.append(node("span", pendingFileName, "cw-hub__appearance-help"));
+      const save = node("button", "Save", "cw-appearance-secondary"); save.type = "button";
+      save.disabled = pendingImageUrl === null;
+      save.addEventListener("click", async () => {
+        const controls = [...box.querySelectorAll("input,button:not(.cw-appearance-close)")]; controls.forEach(control => { control.disabled = true; });
         status.textContent = "Saving…";
         try {
-          const imageUrl = source instanceof File ? await globalThis.CoursewiseCourseImage.prepare(source) : source;
-          const saved = await broker("styleCourse", { courseId: course.id, color, imageUrl });
+          const color = ["blue", "lavender", "peach", "mint", "butter", "rose", "sky", "teal", "violet", "orange"].includes(course.color) ? course.color : "blue";
+          const saved = await broker("styleCourse", { courseId: course.id, color, imageUrl: pendingImageUrl });
           Object.assign(course, { color: saved.color, image_url: saved.imageUrl });
           const current = state.workspace?.courses?.find(item => item.id === course.id);
           if (current) Object.assign(current, { color: saved.color, image_url: saved.imageUrl });
-          if (backdrop.isConnected) { renderCourse(); status.textContent = "Saved."; }
+          pendingImageUrl = null; pendingFileName = ""; render(); renderPicture(); status.textContent = "Saved.";
         } catch (error) { status.textContent = error.message; }
-        finally { controls.forEach(control => { control.disabled = false; }); if (backdrop.isConnected) courseSelect.focus(); }
-      };
-      const renderCourse = () => {
-        details.replaceChildren(); const course = courses.find(item => item.id === courseSelect.value); if (!course) return;
-        const currentColor = courseColors.some(([color]) => color === course.color) ? course.color : "blue";
-        const colors = node("div", undefined, "cw-hub__appearance-row");
-        courseColors.forEach(([color, label]) => {
-          const swatch = node("button", label, "cw-hub__course-swatch " + color); swatch.type = "button"; swatch.setAttribute("aria-pressed", String(currentColor === color));
-          swatch.addEventListener("click", () => saveCourseAppearance(course, color, course.image_url || "")); colors.append(swatch);
-        }); details.append(colors);
-        const upload = node("input"); upload.type = "file"; upload.accept = globalThis.CoursewiseCourseImage.accept; upload.setAttribute("aria-label", `Choose picture for ${course.name}`);
-        const uploadLabel = node("label", "Choose course picture", "cw-appearance-upload"); uploadLabel.append(upload); details.append(uploadLabel);
-        if (course.image_url) { const preview = node("img", undefined, "cw-appearance-preview"); preview.src = course.image_url; preview.alt = `${course.name} picture preview`; details.append(preview); const remove = node("button", "Remove picture", "cw-appearance-secondary"); remove.type = "button"; remove.addEventListener("click", () => saveCourseAppearance(course, currentColor, "")); details.append(remove); }
-        upload.addEventListener("change", async () => {
-          const file = upload.files?.[0]; if (!file) return;
-          await saveCourseAppearance(course, currentColor, file);
-        });
-      };
-      courseSelect.addEventListener("change", () => { state.appearanceCourseId = courseSelect.value; renderCourse(); });
-      courseArea.append(courseSelect, details); renderCourse();
-    } else courseArea.append(node("p", "Save a Canvas course to Coursewise before changing its appearance.", "cw-hub__appearance-help"));
-    box.append(courseArea);
-    const status = node("p", "", "cw-appearance-status"); status.setAttribute("role", "status"); box.append(status);
-    backdrop.append(box); return backdrop;
+        finally { controls.forEach(control => { control.disabled = false; }); if (backdrop.isConnected) upload.focus(); }
+      });
+      details.append(save);
+      if (previewUrl) {
+        const remove = node("button", "Remove picture", "cw-appearance-secondary"); remove.type = "button";
+        remove.addEventListener("click", () => { pendingImageUrl = ""; pendingFileName = ""; renderPicture(); }); details.append(remove);
+      }
+      upload.addEventListener("change", async () => {
+        const file = upload.files?.[0]; if (!file) return;
+        status.textContent = "Preparing picture…";
+        try { pendingImageUrl = await globalThis.CoursewiseCourseImage.prepare(file); pendingFileName = file.name; renderPicture(); status.textContent = "Picture ready. Click Save."; }
+        catch (error) { status.textContent = error.message; }
+      });
+    };
+    box.append(node("p", "Choose an image for this course card.", "cw-hub__appearance-help"), details, status);
+    renderPicture(); backdrop.append(box); return backdrop;
   }
   function openAppearancePopup(workspace) {
     if (workspace?.courses) state.workspace = workspace;
@@ -241,6 +259,13 @@
     popup.showModal();
     syncAppearanceModeControls();
     popup.querySelector("select")?.focus();
+  }
+  function openCoursePicturePopup(courseId) {
+    document.querySelector(".cw-appearance-backdrop")?.remove();
+    const popup = coursePicturePanel(courseId);
+    if (!popup) return;
+    document.body.append(popup); popup.showModal();
+    popup.querySelector('input[type="file"]')?.focus();
   }
   globalThis.CoursewiseAppearance = { open: openAppearancePopup };
   function maxRailWidth() {
@@ -258,16 +283,8 @@
     if (!hub) return;
     if (!document.querySelector(".cw-rail-collapse")) {
       const collapse = node("button", "›", "cw-rail-collapse"); collapse.type = "button";
-      collapse.setAttribute("aria-label", "Collapse or resize Coursewise organizer"); collapse.title = "Click to collapse; drag to resize";
-      let dragged = false;
-      collapse.addEventListener("pointerdown", event => {
-        dragged = false;
-        startRailResize(event, () => { dragged = true; }, 4);
-      });
-      collapse.addEventListener("click", event => {
-        if (dragged) { event.preventDefault(); dragged = false; return; }
-        collapseRail(true);
-      });
+      collapse.setAttribute("aria-label", "Hide Coursewise sidebar"); collapse.title = "Hide Coursewise sidebar";
+      collapse.addEventListener("click", () => collapseRail(true));
       hub.append(collapse);
     }
   }
@@ -275,8 +292,73 @@
     const active = state.horizontalView && route()?.type === "dashboard";
     document.body.classList.toggle("cw-horizontal-view", active);
     document.body.style.setProperty("--cw-horizontal-card-height", `${state.horizontalCardHeight}px`);
+    document.body.style.setProperty("--cw-card-zoom", String(state.cardScale / 100));
     if (active) ensureHorizontalResizeHandles();
     else document.querySelectorAll(".cw-horizontal-resize-handle").forEach(handle => handle.remove());
+    if (!active && route()?.type === "dashboard") ensureCardResizeHandles();
+    else document.querySelectorAll(".cw-card-resize-handle").forEach(handle => handle.remove());
+  }
+  function clampCardScale(scale) {
+    return Math.max(MIN_CARD_SCALE, Math.min(MAX_CARD_SCALE, Math.round(scale)));
+  }
+  function updateCardScale(scale) {
+    state.cardScale = clampCardScale(scale);
+    document.body.style.setProperty("--cw-card-zoom", String(state.cardScale / 100));
+    document.querySelectorAll(".cw-card-resize-handle").forEach(handle => {
+      handle.setAttribute("aria-valuenow", String(state.cardScale));
+      handle.setAttribute("aria-valuetext", `${state.cardScale}%`);
+    });
+  }
+  function saveCardScale() {
+    viewSaveQueue = viewSaveQueue.then(() => chrome.storage.local.set({ [CARD_SCALE_KEY]: state.cardScale })).catch(() => {});
+  }
+  function ensureCardResizeHandles() {
+    for (const { card } of dashboardCards()) {
+      if (card.querySelector(".cw-card-resize-handle")) continue;
+      const handle = node("div", undefined, "cw-card-resize-handle");
+      handle.setAttribute("role", "slider");
+      handle.tabIndex = 0;
+      handle.setAttribute("aria-label", "Scale all course cards");
+      handle.setAttribute("aria-valuemin", String(MIN_CARD_SCALE));
+      handle.setAttribute("aria-valuemax", String(MAX_CARD_SCALE));
+      handle.setAttribute("aria-valuenow", String(state.cardScale));
+      handle.setAttribute("aria-valuetext", `${state.cardScale}%`);
+      handle.title = "Drag diagonally to scale all course cards";
+      let startX = 0, startY = 0, startScale = 0, baseWidth = 0, baseHeight = 0;
+      handle.addEventListener("pointerdown", event => {
+        if (event.button !== 0) return;
+        event.preventDefault(); event.stopPropagation();
+        startX = event.clientX; startY = event.clientY; startScale = state.cardScale;
+        baseWidth = card.getBoundingClientRect().width / (state.cardScale / 100);
+        baseHeight = card.getBoundingClientRect().height / (state.cardScale / 100);
+        handle.setPointerCapture(event.pointerId);
+      });
+      handle.addEventListener("pointermove", event => {
+        if (!handle.hasPointerCapture(event.pointerId)) return;
+        const horizontal = (event.clientX - startX) / baseWidth;
+        const vertical = (event.clientY - startY) / baseHeight;
+        const change = Math.abs(horizontal) > Math.abs(vertical) ? horizontal : vertical;
+        updateCardScale(startScale + change * 100);
+      });
+      handle.addEventListener("pointerup", event => {
+        if (!handle.hasPointerCapture(event.pointerId)) return;
+        handle.releasePointerCapture(event.pointerId);
+        saveCardScale();
+      });
+      handle.addEventListener("pointercancel", event => {
+        if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+        updateCardScale(startScale);
+      });
+      handle.addEventListener("keydown", event => {
+        const delta = { ArrowUp: 5, ArrowRight: 5, ArrowDown: -5, ArrowLeft: -5, PageUp: 10, PageDown: -10 }[event.key];
+        const scale = event.key === "Home" ? MIN_CARD_SCALE : event.key === "End" ? MAX_CARD_SCALE : delta == null ? null : state.cardScale + delta;
+        if (scale == null) return;
+        event.preventDefault(); event.stopPropagation();
+        updateCardScale(scale);
+        saveCardScale();
+      });
+      card.append(handle);
+    }
   }
   function clampHorizontalCardHeight(height) {
     return Math.max(MIN_HORIZONTAL_CARD_HEIGHT, Math.min(MAX_HORIZONTAL_CARD_HEIGHT, Math.round(height)));
@@ -322,7 +404,7 @@
         updateHorizontalCardHeight(startHeight);
       });
       handle.addEventListener("keydown", event => {
-        const delta = { ArrowUp: 10, ArrowDown: -10, PageUp: 40, PageDown: -40 }[event.key];
+        const delta = { ArrowUp: -10, ArrowDown: 10, PageUp: -40, PageDown: 40 }[event.key];
         const height = event.key === "Home" ? MIN_HORIZONTAL_CARD_HEIGHT : event.key === "End" ? MAX_HORIZONTAL_CARD_HEIGHT : delta == null ? null : state.horizontalCardHeight + delta;
         if (height == null) return;
         event.preventDefault(); event.stopPropagation();
@@ -333,13 +415,14 @@
     }
   }
   let viewSaveQueue = Promise.resolve();
+  const pictureMenuTriggers = new WeakSet();
+  let pictureMenuCourseId = "";
   function setHorizontalView(enabled) {
     state.horizontalView = enabled;
     applyHorizontalView();
     viewSaveQueue = viewSaveQueue.then(() => chrome.storage.local.set({ cwHorizontalView: enabled })).catch(() => {});
   }
   function addHorizontalViewMenuItem() {
-    applyHorizontalView();
     if (route()?.type !== "dashboard") return;
     for (const menu of document.querySelectorAll('[role="menu"]')) {
       const list = menu.querySelector('[data-testid="list-view-menu-item"]');
@@ -394,11 +477,11 @@
   function addCoursewiseAppearanceMenuItem() {
     if (route()?.type !== "dashboard") return;
     for (const menu of document.querySelectorAll('[role="menu"]')) {
-      if (!menu.getClientRects().length || menu.querySelector("[data-cw-appearance-menu-item]")) continue;
+      if (menu.querySelector("[data-cw-appearance-menu-item]")) continue;
       const menuText = menu.textContent.toLowerCase();
       if (!menuText.includes("dashboard view") && !menuText.includes("color overlay")) continue;
       const options = [...menu.querySelectorAll('[role^="menuitem"],button,a')]
-        .filter(item => item.textContent.trim() && item.getClientRects().length);
+        .filter(item => item.textContent.trim());
       const overlay = options.find(option => option.textContent.trim() === "Color Overlay");
       if (!overlay) continue;
       // Clone one menu control, never its surrounding row: the row may contain
@@ -415,17 +498,76 @@
       }
       item.dataset.cwAppearanceMenuItem = "true";
       item.setAttribute("role", "menuitem");
-      item.setAttribute("aria-label", "Coursewise appearance");
+      item.setAttribute("aria-label", "Coursewise settings");
       item.tabIndex = 0;
       const label = [...item.querySelectorAll("*")].reverse().find(element => !element.children.length && element.textContent.trim());
-      if (label) label.textContent = "Coursewise appearance";
-      else item.textContent = "Coursewise appearance";
+      if (label) label.textContent = "Coursewise settings";
+      else item.textContent = "Coursewise settings";
       item.addEventListener("click", event => {
         event.preventDefault(); event.stopImmediatePropagation();
         openAppearancePopup();
       }, true);
       overlay.after(item);
     }
+  }
+  function addCoursePictureMenuItem() {
+    if (route()?.type !== "dashboard") return;
+    for (const { id, card } of dashboardCards()) {
+      const trigger = [...card.querySelectorAll("button")].find(button => /choose a color or course nickname or move course card/i.test(`${button.getAttribute("aria-label") || ""} ${button.textContent || ""}`));
+      if (!trigger || pictureMenuTriggers.has(trigger)) continue;
+      pictureMenuTriggers.add(trigger);
+      trigger.addEventListener("click", () => {
+        pictureMenuCourseId = id;
+        setTimeout(addCoursePictureMenuItem, 100);
+      }, true);
+    }
+    // Do not inspect Canvas' entire dashboard until a course popout is open.
+    // This function runs from the page MutationObserver and broad scans here
+    // can otherwise make the dashboard appear to hang while it loads.
+    if (!pictureMenuCourseId) return;
+    const nativePopout = document.querySelector('[class*="view-tabs__container"], [role="tablist"], [role="tabpanel"]');
+    if (!nativePopout) {
+      pictureMenuCourseId = "";
+      return;
+    }
+    const panels = [...document.querySelectorAll('[role="tabpanel"]')];
+    const colorPanel = panels.find(candidate => candidate.textContent.includes("Nickname"))
+      || [...document.querySelectorAll("*")].find(candidate => candidate.textContent.trim().startsWith("Nickname") && candidate.textContent.includes("Cancel"));
+    let morePanel = panels.find(candidate => candidate !== colorPanel);
+    if (!morePanel) {
+      const moveOption = [...document.querySelectorAll("*")].find(candidate => candidate.children.length === 0 && candidate.textContent.trim() === "Move down");
+      for (let candidate = moveOption?.parentElement; candidate && candidate !== document.body; candidate = candidate.parentElement) {
+        if (/Move down/.test(candidate.textContent) && /Move to bottom/.test(candidate.textContent) && /Unfavorite/.test(candidate.textContent)) {
+          morePanel = candidate;
+          break;
+        }
+      }
+    }
+    const moreTab = [...document.querySelectorAll('[role="tab"], button, [tabindex]')].find(tab => /^(Move|More)$/i.test(tab.textContent.trim()));
+    if (moreTab) {
+      const label = [...moreTab.querySelectorAll("*")].reverse().find(element => !element.children.length && element.textContent.trim());
+      if (label) label.textContent = "More";
+      else moreTab.textContent = "More";
+      moreTab.setAttribute("aria-label", "More");
+      if (!moreTab.dataset.cwMoreTabBound) {
+        moreTab.dataset.cwMoreTabBound = "true";
+        moreTab.addEventListener("click", () => setTimeout(addCoursePictureMenuItem, 50), true);
+      }
+    }
+    if (!morePanel || morePanel.querySelector("[data-cw-course-picture-menu-item]")) return;
+    const template = [...(colorPanel?.querySelectorAll("button") || [])].find(item => item.textContent.trim() === "Cancel") || colorPanel?.querySelector("button") || morePanel.querySelector("button");
+    if (!template) return;
+    const item = template.cloneNode(true);
+    for (const element of [item, ...item.querySelectorAll("*")]) {
+      element.removeAttribute("id"); element.removeAttribute("data-testid"); element.removeAttribute("aria-labelledby"); element.removeAttribute("aria-checked"); element.removeAttribute("aria-selected"); element.removeAttribute("href");
+    }
+    item.dataset.cwCoursePictureMenuItem = "true";
+    item.setAttribute("aria-label", "Course picture"); item.tabIndex = 0;
+    const label = [...item.querySelectorAll("*")].reverse().find(element => !element.children.length && element.textContent.trim());
+    if (label) label.textContent = "Course picture"; else item.textContent = "Course picture";
+    const courseId = pictureMenuCourseId;
+    item.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); openCoursePicturePopup(courseId); }, true);
+    morePanel.append(item);
   }
   function applyRailSize() {
     if (state.railCollapsed || route()?.type !== "dashboard") return;
@@ -446,15 +588,21 @@
     const snapshot = { [RAIL_WIDTH_KEY]: state.railWidth, cwRailCollapsed: state.railCollapsed };
     railSaveQueue = railSaveQueue.then(() => chrome.storage.local.set(snapshot)).catch(() => {});
   }
+  function ensureReopenTab() {
+    if (!state.railCollapsed || route()?.type !== "dashboard" || document.querySelector(".cw-rail-reopen")) return;
+    const reopen = node("button", "‹", "cw-rail-reopen"); reopen.type = "button";
+    reopen.setAttribute("aria-label", "Show Coursewise sidebar"); reopen.title = "Show Coursewise sidebar";
+    reopen.addEventListener("click", () => { collapseRail(false); renderHub(); });
+    document.body.append(reopen);
+  }
   function collapseRail(collapsed) {
     state.railCollapsed = collapsed;
     document.body.classList.toggle("cw-organizer-collapsed", collapsed);
     document.querySelector(".cw-rail-collapse")?.remove();
     document.querySelector(".cw-rail-reopen")?.remove();
     if (collapsed) {
-      const reopen = node("button", "‹", "cw-rail-reopen"); reopen.type = "button";
-      reopen.setAttribute("aria-label", "Show Coursewise organizer"); reopen.title = "Show Coursewise organizer";
-      reopen.addEventListener("click", () => { collapseRail(false); renderHub(); }); document.documentElement.append(reopen);
+      document.querySelector(".cw-hub--rail")?.remove();
+      ensureReopenTab();
     } else applyRailSize();
     persistRail();
   }
@@ -586,6 +734,26 @@
   function placeholder(id) {
     return { id, name: "Canvas course", code: "", grade: { score: null, letter: "" }, url: model.ORIGIN + "/courses/" + id };
   }
+  function savedCourse(id) {
+    return state.workspace?.courses?.find(course => String(course.canvas_id) === String(id));
+  }
+  function paintCoursePicture(card, imageUrl) {
+    const hero = card.querySelector(".ic-DashboardCard__header_hero");
+    const host = card.querySelector(".ic-DashboardCard__header_image") || hero;
+    if (!host) return;
+    let picture = card.querySelector(".cw-custom-course-picture");
+    if (!imageUrl) {
+      picture?.remove();
+      hero?.classList.remove("cw-custom-course-header");
+      host.classList.remove("cw-custom-course-header");
+      return;
+    }
+    hero?.classList.toggle("cw-custom-course-header", hero === host);
+    host.classList.add("cw-custom-course-header");
+    if (!picture) { picture = node("img", undefined, "cw-custom-course-picture"); picture.alt = ""; }
+    if (picture.parentElement !== host) host.prepend(picture);
+    if (picture.getAttribute("src") !== imageUrl) picture.src = imageUrl;
+  }
   function loadCourseData(id, generation, renderWhenReady = true) {
     if (state.requested.has(id)) return Promise.resolve();
     state.requested.add(id);
@@ -661,14 +829,22 @@
       }
     }
   }
-  function nextFuture(id) {
-    return state.work.get(id)?.find(item => !item.overdue);
+  function deadlineWindowDays() {
+    return [1, 3, 7, 14, 30].includes(state.preferences.deadlineWindowDays) ? state.preferences.deadlineWindowDays : 14;
   }
-  function makeGradeBadge(course) {
+  function deadlineWindowLabel() {
+    const days = deadlineWindowDays();
+    return days === 1 ? "1 day" : days === 7 ? "1 week" : days === 14 ? "2 weeks" : `${days} days`;
+  }
+  function nextFuture(id) {
+    const now = Date.now(), end = now + deadlineWindowDays() * 86400000;
+    return state.work.get(id)?.find(item => { const due = Date.parse(item.dueAt); return due >= now && due <= end; });
+  }
+  function makeGradeBadge(course, loading = false) {
     const score = course.grade.score;
-    const badge = node("span", score === null ? "Grade —" : String(score) + "%" + (course.grade.letter ? " · " + course.grade.letter : ""), "cw-card-grade");
-    badge.dataset.state = score === null ? "unavailable" : "available";
-    badge.title = score === null ? "Canvas has not provided a visible current grade." : "Current grade from Canvas";
+    const badge = node("span", loading ? "Loading grade…" : score === null ? "Grade —" : String(score) + "%" + (course.grade.letter ? " · " + course.grade.letter : ""), "cw-card-grade");
+    badge.dataset.state = loading ? "loading" : score === null ? "unavailable" : "available";
+    badge.title = loading ? "Loading current grade from Canvas" : score === null ? "Canvas has not provided a visible current grade." : "Current grade from Canvas";
     return badge;
   }
   function makeDeadline(id) {
@@ -687,16 +863,17 @@
         node("span", ":", "cw-card-due__separator"),
         node("span", "Due " + dateTime.format(when) + (due.points !== null ? " · " + due.points + " pts" : ""), "cw-card-due__when"),
         node("span", compactDate + (due.points !== null ? `: ${due.points} ${due.points === 1 ? "point" : "points"}` : ""), "cw-card-due__compact"));
-    } else box.append(node("span", state.errors.get("work:" + id) || (state.work.has(id) ? "No future unsubmitted deadlines" : "Loading upcoming work…")));
+    } else box.append(node("span", state.errors.get("work:" + id) || (state.work.has(id) ? `No assignments due in the next ${deadlineWindowLabel()}` : state.loading ? "Loading upcoming work…" : "Assignments are unavailable for this course.")));
     return box;
   }
   function renderCards() {
     for (const { id, card } of dashboardCards()) {
-      const course = state.courses.get(id);
-      if (!course) continue;
+      paintCoursePicture(card, savedCourse(id)?.image_url || "");
+      const loadedCourse = state.courses.get(id);
+      const course = loadedCourse || placeholder(id);
       const hero = card.querySelector('.ic-DashboardCard__header_hero, .ic-DashboardCard__header, .DashboardCard__header, .course-card__header') || card;
       hero.style.position = "relative";
-      const badge = makeGradeBadge(course), oldBadge = card.querySelector(".cw-card-grade");
+      const badge = makeGradeBadge(course, !loadedCourse && state.loading), oldBadge = card.querySelector(".cw-card-grade");
       if (!oldBadge) hero.append(badge);
       else if (oldBadge.textContent !== badge.textContent || oldBadge.dataset.state !== badge.dataset.state) oldBadge.replaceWith(badge);
       const deadline = makeDeadline(id), oldDeadline = card.querySelector(".cw-card-due");
@@ -717,6 +894,16 @@
           button.addEventListener("click", event => { event.stopPropagation(); openHealth(id, button); });
           if (old) old.replaceWith(button); else header.append(button);
         }
+      } else {
+        const old = card.querySelector(".cw-health-row");
+        if (state.loading) {
+          if (!old?.classList.contains("cw-health-row--loading")) {
+            const pending = node("span", "Loading course health…", "cw-health-row cw-health-row--loading");
+            pending.setAttribute("role", "status");
+            if (old) old.replaceWith(pending);
+            else (card.querySelector(".ic-DashboardCard__header") || card).append(pending);
+          }
+        } else old?.remove();
       }
     }
   }
@@ -785,8 +972,8 @@
     button.setAttribute("aria-controls", "cw-hub-panel");
     button.setAttribute("aria-selected", String(state.active === space.key));
     button.tabIndex = state.active === space.key ? 0 : -1;
-    button.append(node("span", space.label, "cw-hub__space-label"), node("strong", String(count).padStart(2, "0"), "cw-hub__space-count"),
-      node("span", space.name, "cw-hub__space-name"), node("span", first ? first.title : "You're caught up here", "cw-hub__space-preview"));
+    button.append(node("span", space.label, "cw-hub__space-label"), node("strong", !count && state.loading ? "…" : String(count).padStart(2, "0"), "cw-hub__space-count"),
+      node("span", space.name, "cw-hub__space-name"), node("span", first ? first.title : state.loading ? "Loading from Canvas…" : "You're caught up here", "cw-hub__space-preview"));
     button.addEventListener("click", () => selectSpace(space.key));
     button.addEventListener("keydown", event => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -813,6 +1000,12 @@
       const remaining = assignments.length - reviewed;
       const percent = assignments.length ? Math.round(reviewed / assignments.length * 100) : 0;
       const summary = node("div", undefined, "cw-hub__course-summary");
+      const imageUrl = savedCourse(current.id)?.image_url;
+      if (imageUrl) {
+        const picture = node("img", undefined, "cw-hub__course-picture");
+        picture.src = imageUrl; picture.alt = "";
+        summary.append(picture);
+      }
       const ring = node("div", undefined, "cw-hub__progress");
       ring.style.setProperty("--cw-progress", percent + "%");
       ring.setAttribute("role", "img");
@@ -950,7 +1143,15 @@
     const current = route();
     if (!current) return;
     document.body.classList.toggle("cw-organizer-dashboard", current.type === "dashboard");
-    if (current.type === "dashboard" && state.railCollapsed) { document.querySelector(".cw-hub")?.remove(); document.querySelector(".cw-rail-collapse")?.remove(); if (!document.querySelector(".cw-rail-reopen")) collapseRail(true); return; }
+    if (current.type === "dashboard" && state.railCollapsed) {
+      document.body.classList.add("cw-organizer-collapsed");
+      document.querySelector(".cw-hub")?.remove();
+      document.querySelector(".cw-rail-collapse")?.remove();
+      ensureReopenTab();
+      return;
+    }
+    document.body.classList.remove("cw-organizer-collapsed");
+    document.querySelector(".cw-rail-reopen")?.remove();
     const host = document.querySelector("#right-side") ||
       document.querySelector("#content, .ic-Layout-contentMain, main");
     if (!host) return;
@@ -977,12 +1178,21 @@
     }
     addHorizontalViewMenuItem();
     addCoursewiseAppearanceMenuItem();
+    addCoursePictureMenuItem();
     const current = route();
     const key = current ? current.type + ":" + (current.id || "") : "unsupported";
     if (key === state.route) {
       if (current?.type === "dashboard") {
+        applyHorizontalView();
+        if (state.railCollapsed) {
+          document.querySelector(".cw-hub")?.remove();
+          document.querySelector(".cw-rail-collapse")?.remove();
+          ensureReopenTab();
+        }
         if (!state.railCollapsed && document.querySelector(".cw-hub--rail") && !document.querySelector(".cw-rail-collapse")) showCollapseTab();
-        if (dashboardCards().some(({ id, card }) => state.courses.has(id) && !card.querySelector(".cw-card-grade"))) renderCards();
+        if (dashboardCards().some(({ id, card }) =>
+          (state.courses.has(id) && !card.querySelector(".cw-card-grade")) ||
+          Boolean(savedCourse(id)?.image_url) !== Boolean(card.querySelector(".cw-custom-course-picture")))) renderCards();
         for (const id of visibleIds(current)) {
           if (state.courses.has(id) && !state.requested.has(id) && state.requested.size < 30) loadCourseData(id, state.generation);
         }
@@ -991,47 +1201,82 @@
       return;
     }
     state.route = key; state.generation++; state.loading = false; state.courseExpanded = false;
-    document.querySelectorAll(".cw-hub,.cw-rail-collapse,.cw-card-grade,.cw-card-due,.cw-health-row,.cw-health-dialog,.cw-dashboard-status,.cw-course-overview,.cw-horizontal-resize-handle").forEach(el => el.remove());
+    document.querySelectorAll(".cw-hub,.cw-rail-collapse,.cw-rail-reopen,.cw-card-grade,.cw-card-due,.cw-health-row,.cw-health-dialog,.cw-dashboard-status,.cw-course-overview,.cw-horizontal-resize-handle,.cw-card-resize-handle").forEach(el => el.remove());
     document.body.classList.remove("cw-organizer-active");
     if (current) load();
   }
-  let timer;
-  const observer = new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(onRoute, 250); });
+  let timer, routeReady = false;
+  function enhanceDashboardMenus() {
+    if (route()?.type !== "dashboard") return;
+    if (document.querySelector('[role="menu"] [data-testid="list-view-menu-item"]')) {
+      addHorizontalViewMenuItem();
+      addCoursewiseAppearanceMenuItem();
+      addCoursePictureMenuItem();
+    }
+  }
+  const observer = new MutationObserver(() => {
+    enhanceDashboardMenus();
+    addCoursePictureMenuItem();
+    if (state.railCollapsed) ensureReopenTab();
+    if (routeReady) { clearTimeout(timer); timer = setTimeout(onRoute, 250); }
+  });
   async function initialize() {
+    document.body.classList.add("cw-menu-ready");
+    document.body.classList.add("cw-theme-loading");
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    document.addEventListener("click", event => {
+          const trigger = event.target.closest?.(".ic-DashboardCard__header-button");
+      if (!trigger || !/choose a color or course nickname or move course card/i.test(`${trigger.getAttribute("aria-label") || ""} ${trigger.textContent || ""}`)) return;
+      const card = trigger.closest('.ic-DashboardCard, .DashboardCard, [data-testid="course-card"], .course-card, article');
+      const link = card?.querySelector('a[href*="/courses/"]');
+      const match = link && /^\/courses\/(\d+)\/?$/.exec(new URL(link.getAttribute("href") || "", location.origin).pathname);
+      if (!match) return;
+      pictureMenuCourseId = match[1];
+      setTimeout(addCoursePictureMenuItem, 150);
+    }, true);
+    enhanceDashboardMenus();
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === "local" && changes.cwCanvasPreferences?.newValue) {
         Object.assign(state.preferences, changes.cwCanvasPreferences.newValue);
-        applyBackground(); syncAppearanceModeControls();
+        applyBackground(); syncAppearanceModeControls(); renderCards();
       }
-      if (area === "local" && changes.cwCourseAppearanceUpdated) {
-        broker("getWorkspace").then(workspace => { state.workspace = workspace; }).catch(() => {});
+      if (area === "local" && (changes.cwLocalSchools || changes.cwCourseAppearanceUpdated)) {
+        broker("getWorkspace").then(workspace => { state.workspace = workspace; render(); }).catch(() => {});
       }
       if (area === "local" && changes[HORIZONTAL_CARD_HEIGHT_KEY]) {
         const height = changes[HORIZONTAL_CARD_HEIGHT_KEY].newValue;
         if (Number.isFinite(height)) updateHorizontalCardHeight(height);
+      }
+      if (area === "local" && changes[CARD_SCALE_KEY]) {
+        const scale = changes[CARD_SCALE_KEY].newValue;
+        if (Number.isFinite(scale)) updateCardScale(scale);
       }
     });
     matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
       if (state.preferences.canvasThemeMode === "system") { applyBackground(); syncAppearanceModeControls(); }
     });
     try {
-      const saved = await chrome.storage.local.get([READ_KEY, RAIL_WIDTH_KEY, HORIZONTAL_CARD_HEIGHT_KEY, "cwRailCollapsed", "cwCanvasPreferences", "cwHorizontalView"]);
-      if (saved.cwCanvasPreferences) { Object.assign(state.preferences, saved.cwCanvasPreferences); applyBackground(); }
+      const saved = await chrome.storage.local.get([READ_KEY, RAIL_WIDTH_KEY, HORIZONTAL_CARD_HEIGHT_KEY, CARD_SCALE_KEY, "cwRailCollapsed", "cwCanvasPreferences", "cwHorizontalView"]);
+      if (saved.cwCanvasPreferences) Object.assign(state.preferences, saved.cwCanvasPreferences);
       state.read = new Set(validReadKeys(saved[READ_KEY]));
       if (Number.isFinite(saved[RAIL_WIDTH_KEY])) state.railWidth = Math.max(MIN_RAIL_WIDTH, saved[RAIL_WIDTH_KEY]);
       state.railCollapsed = saved.cwRailCollapsed === true;
       state.horizontalView = saved.cwHorizontalView === true;
       if (Number.isFinite(saved[HORIZONTAL_CARD_HEIGHT_KEY])) state.horizontalCardHeight = clampHorizontalCardHeight(saved[HORIZONTAL_CARD_HEIGHT_KEY]);
+      if (Number.isFinite(saved[CARD_SCALE_KEY])) state.cardScale = clampCardScale(saved[CARD_SCALE_KEY]);
     } catch { state.storageError = true; }
-    const [preferences, workspace] = await Promise.allSettled([broker("getPreferences"), broker("getWorkspace")]);
-    if (preferences.status === "fulfilled") { state.preferences = preferences.value; applyBackground(); }
-    if (workspace.status === "fulfilled") state.workspace = workspace.value;
+    applyBackground();
+    document.body.classList.remove("cw-theme-loading");
+    broker("getPreferences").then(preferences => {
+      state.preferences = preferences; applyBackground(); syncAppearanceModeControls(); renderCards();
+    }).catch(() => {});
+    broker("getWorkspace").then(workspace => { state.workspace = workspace; render(); }).catch(() => {});
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local" || !changes[READ_KEY]) return;
       state.read = new Set(validReadKeys(changes[READ_KEY].newValue));
       renderHub();
     });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    routeReady = true;
     window.addEventListener("popstate", onRoute);
     window.addEventListener("cw-coursewise-visibility", () => { onRoute(); if (!document.body.classList.contains("cw-canvas-app-active")) renderHub(); });
     window.addEventListener("resize", applyRailSize);

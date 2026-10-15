@@ -8,9 +8,15 @@ export function cosine(a: number[], b: number[]) {
   for(let i=0;i<a.length;i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i];}
   return aa && bb ? dot/Math.sqrt(aa*bb) : 0;
 }
-export function rankPassages(passages: IndexedPassage[], query: string, similarities: number[] = []) {
-  const terms=[...new Set(query.toLowerCase().match(/[a-z0-9]{3,}/g)||[])].filter(x=>!['the','and','what','that','this','with','about','course'].includes(x));
-  const ranked=passages.map((p,i)=>({...p,score: (similarities[i]||0)*0.7 + (terms.filter(t=>(p.source_label+' '+p.text).toLowerCase().includes(t)).length/Math.max(1,terms.length))*0.3})).sort((a,b)=>b.score-a.score);
+const termsFor = (query:string) => [...new Set(query.toLowerCase().match(/[a-z0-9]{3,}/g)||[])].filter(x=>!['the','and','what','that','this','with','about','course'].includes(x));
+export function keywordScore(p:IndexedPassage,terms:string[]) {
+  if(!terms.length)return 0;
+  const label=p.source_label.toLowerCase(),body=p.text.toLowerCase();
+  return terms.reduce((score,term)=>score+(label.includes(term)?0.35:0)+(body.includes(term)?1:0),0)/terms.length;
+}
+export function rankPassages(passages: IndexedPassage[], query: string, similarities: (number|undefined)[] = []) {
+  const terms=termsFor(query);
+  const ranked=passages.map((p,i)=>({...p,score: similarities[i] == null ? keywordScore(p,terms) : Math.max(0,similarities[i])*0.7 + keywordScore(p,terms)*0.3})).sort((a,b)=>b.score-a.score);
   const seen=new Set<string>(); let chars=0;
   return ranked.filter(p=>{if(seen.has(p.text)||chars+p.text.length>6000)return false;seen.add(p.text);chars+=p.text.length;return true;}).slice(0,6);
 }
@@ -37,10 +43,14 @@ export async function retrieve(user:string,materials:Material[],query:string) {
   }
   const cache=new Map(cached.map(v=>[v.material_id+':'+v.content_hash,JSON.parse(v.embedding) as number[]]));
   try {
-    // Limit initial indexing work per turn; large libraries fill progressively.
-    const missing=passages.map((p,i)=>({p,i})).filter(({p,i})=>!cache.has(p.material_id+':'+hashes[i])).slice(0,192);
-    for(let offset=0;offset<missing.length;offset+=64){
-      const batch=missing.slice(offset,offset+64), vectors=await embed(batch.map(({p})=>p.text));
+    // Embed the best lexical candidates first. The rest remain searchable through
+    // keywords, so a large library does not force hundreds of embeddings per turn.
+    const terms=termsFor(query);
+    const missing=passages.map((p,i)=>({p,i,score:keywordScore(p,terms)}))
+      .filter(({p,i})=>!cache.has(p.material_id+':'+hashes[i]))
+      .sort((a,b)=>b.score-a.score).slice(0,24);
+    for(let offset=0;offset<missing.length;offset+=24){
+      const batch=missing.slice(offset,offset+24), vectors=await embed(batch.map(({p})=>p.text));
       await db.batch(batch.map(({p,i},j)=>{
         cache.set(p.material_id+':'+hashes[i],vectors[j]);
         const material=materials.find(m=>m.id===p.material_id)!;
@@ -48,7 +58,10 @@ export async function retrieve(user:string,materials:Material[],query:string) {
       }));
     }
     const [vector]=await embed([query.slice(0,4000)]);
-    return {passages:rankPassages(passages,query,passages.map((p,i)=>cosine(vector,cache.get(p.material_id+':'+hashes[i])||[]))),retrieval:passages.every((p,i)=>cache.has(p.material_id+':'+hashes[i]))?'hybrid':'hybrid-partial'};
+    return {passages:rankPassages(passages,query,passages.map((p,i)=>{
+      const embedding=cache.get(p.material_id+':'+hashes[i]);
+      return embedding ? cosine(vector,embedding) : undefined;
+    })),retrieval:passages.every((p,i)=>cache.has(p.material_id+':'+hashes[i]))?'hybrid':'hybrid-partial'};
   } catch {
     return {passages:rankPassages(passages,query),retrieval:'keyword-fallback'};
   }

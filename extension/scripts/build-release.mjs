@@ -17,7 +17,7 @@ function origin(value, label) {
 const site = origin(args.site, "site"), canvas = origin(args.canvas, "canvas");
 const output = resolve(args.out || join(source, "release"));
 if (output === source || source.startsWith(output + "/")) throw new Error("Choose a separate output directory.");
-const files = ["manifest.json", "icon16.png", "icon32.png", "icon48.png", "icon128.png", "background.js", "sidepanel.html", "sidepanel.js", "sidepanel.css", "content.js", "insights-model.js", "course-health.js", "palette.js", "course-image.js", "insights.js", "insights.css", "canvas-app.js", "canvas-app.css", "appearance.css", "appearance-frame.js", "appearance-frame.css", "chat-format.js", "vendor/libheif-without-unsafe-eval.js", "vendor/LICENSE-heic-to.txt"];
+const files = ["manifest.json", "icon16.png", "icon32.png", "icon48.png", "icon128.png", "background.js", "sidepanel.html", "sidepanel.js", "sidepanel.css", "content.js", "insights-model.js", "course-health.js", "palette.js", "theme-bootstrap.js", "theme-bootstrap.css", "course-image.js", "insights.js", "insights.css", "canvas-app.js", "canvas-app.css", "appearance.css", "appearance-frame.js", "appearance-frame.css", "chat-format.js", "vendor/libheif-without-unsafe-eval.js", "vendor/LICENSE-heic-to.txt"];
 for (const file of files) {
   const target = join(output, file);
   await mkdir(dirname(target), { recursive: true });

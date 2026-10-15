@@ -19,6 +19,19 @@ body.cw-organizer-dashboard .ic-DashboardCard{
   max-height:390px!important;
   overflow:hidden;
 }
+body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard{zoom:var(--cw-card-zoom,1)}
+body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .cw-card-resize-handle{
+  position:absolute;z-index:8;right:0;bottom:0;width:25px;height:25px;
+  cursor:nwse-resize;touch-action:none;
+}
+body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .cw-card-resize-handle::after{
+  content:"";position:absolute;right:5px;bottom:5px;width:12px;height:12px;
+  border-right:3px solid #8ba6ad;border-bottom:3px solid #8ba6ad;border-radius:0 0 3px 0;
+}
+body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .cw-card-resize-handle:is(:hover,:focus-visible)::after{border-color:#138a81}
+body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .cw-card-resize-handle:focus-visible{outline:2px solid #138a81;outline-offset:-2px}
+body.cw-organizer-dashboard.cw-canvas-dark .ic-DashboardCard .cw-card-resize-handle::after{border-color:var(--cw-dark-muted)}
+body.cw-organizer-dashboard.cw-canvas-dark .ic-DashboardCard .cw-card-resize-handle:is(:hover,:focus-visible)::after{border-color:var(--cw-dark-accent)}
 body.cw-organizer-dashboard .ic-DashboardCard .ic-DashboardCard__header_content{
   box-sizing:border-box;
   height:116px;
@@ -183,7 +196,7 @@ body.cw-organizer-dashboard.cw-organizer-collapsed #right-side-wrapper{display:n
 .cw-hub--rail{position:relative}.cw-hub--rail .cw-rail-resize-handle{position:absolute;z-index:10;left:-12px;top:0;bottom:0;width:16px;cursor:ew-resize;touch-action:none}.cw-hub--rail .cw-rail-resize-handle:hover,.cw-hub--rail .cw-rail-resize-handle:focus{background:#138a8122}
 .cw-hub--rail .cw-rail-resize-handle:focus-visible{outline:3px solid #edaa42;outline-offset:2px}
 .cw-rail-collapse,.cw-rail-reopen{box-sizing:border-box;width:25px;height:52px;padding:0;background:#fff;font-size:24px;line-height:1;cursor:pointer}
-.cw-rail-collapse{position:absolute;top:50%;transform:translateY(-50%);z-index:11;left:-25px;border:1px solid #cbdde3;border-right:0;border-radius:9px 0 0 9px;color:#245769;box-shadow:-4px 4px 15px #0f304026;cursor:ew-resize;touch-action:none}
+.cw-rail-collapse{position:absolute;top:50%;transform:translateY(-50%);z-index:11;left:-25px;border:1px solid #cbdde3;border-right:0;border-radius:9px 0 0 9px;color:#245769;box-shadow:-4px 4px 15px #0f304026}
 .cw-rail-reopen{position:fixed;top:45vh;z-index:99999;right:0;border:1px solid #cbdde3;border-right:0;border-radius:9px 0 0 9px;color:#245769;box-shadow:0 4px 15px #0f304026}
 .cw-hub--rail .cw-hub__hero{display:block;padding:17px 15px 15px}
 .cw-hub--rail .cw-hub__identity{gap:9px}
@@ -230,6 +243,7 @@ body.cw-organizer-dashboard.cw-organizer-collapsed #right-side-wrapper{display:n
 /* Course pages keep Canvas content in place and show a small progress card in the sidebar. */
 .cw-hub--course-rail{width:100%;max-width:100%;margin:0 0 16px;border-radius:12px;box-shadow:0 3px 12px #0f304010;overflow:hidden}
 .cw-hub__course-summary{display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:10px;padding:13px}
+.cw-hub__course-picture{grid-column:1/-1;display:block;width:100%;height:110px;object-fit:cover;border-radius:8px}
 .cw-hub__progress{position:relative;display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:conic-gradient(#19877b var(--cw-progress),#e3ecea 0);color:#176c65}
 .cw-hub__progress:before{content:"";position:absolute;inset:7px;border-radius:50%;background:#fff}
 .cw-hub__progress strong{z-index:1;font-size:12px;line-height:1}
@@ -366,6 +380,7 @@ body.cw-horizontal-view.cw-canvas-dark .ic-DashboardCard .cw-horizontal-resize-h
 .ic-DashboardCard .cw-health-row{position:absolute;z-index:1;right:10px;bottom:18px;left:10px;display:flex;align-items:center;gap:7px;max-width:calc(100% - 20px);height:28px;min-height:28px;padding:3px 8px;border:1px solid #b9d5d3;border-radius:6px;background:#f0faf8;color:#175e5c;font:600 10px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:left;cursor:pointer;white-space:nowrap}
 .ic-DashboardCard .cw-health-row strong{flex:none;font:inherit;font-weight:800}.ic-DashboardCard .cw-health-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ic-DashboardCard .cw-health-row--watch{border-color:#dec797;background:#fff8eb;color:#754c14}.ic-DashboardCard .cw-health-row--needs-attention{border-color:#e5b9b4;background:#fff2f0;color:#8c3030}.ic-DashboardCard .cw-health-row--limited-data{border-color:#cbd4dc;background:#f5f7f9;color:#53616e}
+.ic-DashboardCard .cw-health-row--loading{cursor:default;opacity:.7}
 .cw-health-count{flex:none;margin-left:auto;padding:0 5px;border:1px solid currentColor;border-radius:9px;font-style:normal;font-size:10px}
 .ic-DashboardCard .cw-health-row:focus-visible,.cw-health-sheet :is(button,a):focus-visible{outline:3px solid #167eaa;outline-offset:2px}
 body.cw-horizontal-view .ic-DashboardCard .cw-health-row{position:static;grid-column:2;grid-row:2;width:auto;max-width:none;margin:0 6px 3px 4px}

@@ -46,6 +46,27 @@
   `;
   let searchThemeObserver;
   let previewTheme;
+  const themeCacheKey = "cwCanvasThemeV1:" + (globalThis.chrome?.runtime?.id || "coursewise");
+  function cachedPreferences() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(themeCacheKey));
+      if (/^#[0-9a-f]{6}$/i.test(saved?.canvasBackground) && ["light", "dark", "system"].includes(saved?.canvasThemeMode))
+        return { canvasBackground: saved.canvasBackground, canvasThemeMode: saved.canvasThemeMode };
+    } catch { /* Site storage can be unavailable; extension storage remains authoritative. */ }
+    return null;
+  }
+  function syncBodyTheme() {
+    if (!previewTheme || !document.body) return;
+    document.body.classList.toggle("cw-canvas-dark", previewTheme.dark);
+    document.body.classList.add("cw-canvas-themed");
+  }
+  function clearTheme() {
+    previewTheme = null;
+    document.documentElement.classList.remove("cw-canvas-themed");
+    document.documentElement.style.removeProperty("color-scheme");
+    document.body?.classList.remove("cw-canvas-themed", "cw-canvas-dark");
+    try { localStorage.removeItem(themeCacheKey); } catch { /* Storage can be blocked. */ }
+  }
   const themedPreviews = new WeakSet();
   function themeEmbeddedFrames(force = false) {
     if (!previewTheme) return;
@@ -107,7 +128,7 @@
       : sector < 5 ? [secondary, 0, chroma] : [chroma, 0, secondary];
     return parts.map(value => (value + offset) * 255);
   }
-  function applyTheme(selected, dark) {
+  function applyTheme(selected, dark, mode = dark ? "dark" : "light") {
     const page = rgb(dark ? "#111923" : background(selected));
     const nav = dark ? rgb("#1b2838") : sidebarColor(sidebarSource(selected));
     const surface = dark ? rgb("#1b2838") : blend(page, [255, 255, 255], 0.22);
@@ -135,14 +156,19 @@
       "--cw-nav-hover-ink": hoverText.ink,
       "--cw-nav-highlight": navText.ink === "#f7f9fc" || navText.ink === "#ffffff" ? "rgba(255,255,255,.16)" : "rgba(26,44,61,.12)"
     };
-    document.body.classList.toggle("cw-canvas-dark", dark);
-    document.body.classList.add("cw-canvas-themed");
+    document.documentElement.style.colorScheme = dark ? "dark" : "light";
     for (const [name, value] of Object.entries(tokens)) document.documentElement.style.setProperty(name, value);
+    document.documentElement.classList.add("cw-canvas-themed");
     previewTheme = { type: "cw:preview-theme", tokens, dark };
+    syncBodyTheme();
+    // Keep only appearance on this Canvas origin so the next document can use
+    // the exact color synchronously, before chrome.storage responds.
+    try { localStorage.setItem(themeCacheKey, JSON.stringify({ canvasBackground: selected, canvasThemeMode: mode })); }
+    catch { /* Extension storage still saves the user's settings. */ }
     themeEmbeddedFrames(true);
     themeSearchWidgets();
     if (!searchThemeObserver) {
-      searchThemeObserver = new MutationObserver(() => { themeSearchWidgets(); themeEmbeddedFrames(); });
+      searchThemeObserver = new MutationObserver(() => { syncBodyTheme(); themeSearchWidgets(); themeEmbeddedFrames(); });
       searchThemeObserver.observe(document.documentElement, { childList: true, subtree: true });
     }
   }
@@ -151,6 +177,8 @@
     background,
     sidebarSource,
     applyTheme,
+    cachedPreferences,
+    clearTheme,
     contrast,
     readableColors
   });

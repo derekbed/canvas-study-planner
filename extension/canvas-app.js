@@ -3,7 +3,7 @@
   if (location.origin !== "https://canvas.upenn.edu") return;
   const model = globalThis.CoursewiseInsightsModel;
   const palette = globalThis.CoursewiseCanvasPalette;
-  const state = { active: false, tab: "today", courseId: "all", category: "all", comingUpCollapsed: false, pageHistory: [], workspace: null, preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light" },
+  const state = { active: false, tab: "today", courseId: "all", category: "all", comingUpCollapsed: false, pageHistory: [], workspace: null, preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", ...palette.cachedPreferences() },
     live: { courses: [], work: [], announcements: [], calendar: [], errors: [] }, loading: false, busy: false,
     chatCourse: "", chatId: "", chats: [], chatMessages: [], chatLoading: false, chatMore: false, chatGeneration: 0, chatRetry: null, chatPending: null, chatError: "", session: null, pairCode: "", question: "", includePage: false, selected: new Set(), sourceTouched: false, answer: null,
     message: "", extensionDisconnected: false, knowledge: new Map(), knowledgeDrafts: new Map(), dismissedAnnouncements: new Set(), page: {}, host: null, shell: null, hidden: null, activePath: "", previousFocus: null };
@@ -79,7 +79,7 @@
     const selected = /^#[0-9a-f]{6}$/i.test(state.preferences.canvasBackground) ? state.preferences.canvasBackground : "#f7faf9";
     const mode = ["light", "dark", "system"].includes(state.preferences.canvasThemeMode) ? state.preferences.canvasThemeMode : "light";
     const dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-    palette.applyTheme(selected, dark);
+    palette.applyTheme(selected, dark, mode);
   }
   function applyCanvasBranding() {
     const setVisibleName = (node, name) => {
@@ -151,13 +151,13 @@
     while (host.firstChild) original.append(host.firstChild);
     original.hidden = true;
     host.append(original, shell);
-    state.hidden = original; state.shell = shell; state.active = true;
+    state.hidden = original; state.shell = shell; state.active = true; state.session = null;
     state.activePath = location.pathname;
     document.body.classList.add("cw-canvas-app-active");
     window.dispatchEvent(new Event("cw-coursewise-visibility"));
     sizeWorkspace();
     history.pushState({ ...(history.state || {}), coursewise: true }, "", location.href);
-    updateNav(); render(); loadAll();
+    updateNav(); loadAll();
     shell.querySelector("h1")?.focus();
   }
   function deactivate() {
@@ -395,7 +395,7 @@
   }
   function renderCourses() {
     const body = el("div", undefined, "cw-main-content"), cards = el("div", undefined, "cw-cards");
-    const all = courseList(); if (!all.length) return empty(state.live.errors.length ? state.live.errors.join(" · ") : "No dashboard courses found. Favorite courses in Canvas, then refresh.");
+    const all = courseList(); if (!all.length) return empty(state.loading ? "Loading courses from Canvas…" : state.live.errors.length ? state.live.errors.join(" · ") : "No dashboard courses found. Favorite courses in Canvas, then refresh.");
     const current = selectedCourse();
     if (current) {
       const detail = el("section", undefined, "cw-panel"), grade = current.live?.grade?.score ?? current.saved?.current_grade;
@@ -797,10 +797,14 @@
       if (state.tab === key) control.setAttribute("aria-current", "page"); side.append(control);
     }
     const content = el("main", undefined, "cw-content");
-    if (state.loading) content.append(el("p", "Loading your workspace…", "cw-note"));
-    if (state.message) { const message = el("p", state.message, "cw-status"); message.setAttribute("role", "status"); content.append(message); }
+    if (state.message && !(state.loading && !state.session)) { const message = el("p", state.message, "cw-status"); message.setAttribute("role", "status"); content.append(message); }
     if (state.extensionDisconnected) content.append(button("Refresh Canvas", () => location.reload(), "cw-primary"));
-    if (!state.session?.paired) {
+    if (state.loading && !state.session) {
+      const waiting = el("section", undefined, "cw-panel");
+      waiting.setAttribute("role", "status");
+      append(waiting, el("h2", "Connecting to Coursewise…"), el("p", "Loading your Canvas workspace and session."));
+      content.append(waiting);
+    } else if (!state.session?.paired) {
       const box = el("section", undefined, "cw-panel");
       append(box, el("h2", "Pair your local Coursewise workspace"),
         el("p", "Pair once in the Coursewise tab. Daily course work stays here in Canvas."),

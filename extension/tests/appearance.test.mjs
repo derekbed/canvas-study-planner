@@ -41,6 +41,13 @@ test('invalid appearance does not overwrite the saved choice', async () => {
   assert.equal((await send({canvasBackground:'invalid'})).ok, false);
   assert.equal((await send({}, 'cw:getPreferences')).data.canvasBackground, '#f2f9f6');
 });
+test('deadline window persists and rejects unsupported values', async () => {
+  const send = harness();
+  assert.equal((await send({}, 'cw:getPreferences')).data.deadlineWindowDays, 14);
+  assert.equal((await send({ deadlineWindowDays: 7 })).ok, true);
+  assert.equal((await send({ deadlineWindowDays: 21 })).ok, false);
+  assert.equal((await send({}, 'cw:getPreferences')).data.deadlineWindowDays, 7);
+});
 test('data requests are blocked before disclosure consent', async () => {
   const send = harness({ cwDataConsent: false });
   const result = await send({}, 'cw:getPreferences');
