@@ -1,7 +1,7 @@
 "use strict";
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
-const defaults = { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14 };
+const defaults = { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, showCardGrades: true };
 const MAIN_FILES = ["insights-model.js", "course-health.js", "vendor/libheif-without-unsafe-eval.js", "course-image.js", "insights.js"];
 let saveQueue = Promise.resolve();
 let schoolQueue = Promise.resolve();
@@ -80,7 +80,7 @@ function savePreferences(patch) {
   const task = saveQueue.then(async () => {
     const saved = await chrome.storage.local.get("cwCanvasPreferences");
     const next = { ...defaults, ...saved.cwCanvasPreferences, ...patch };
-    if (!/^#[0-9a-f]{6}$/i.test(next.canvasBackground) || !["light", "dark", "system"].includes(next.canvasThemeMode) || ![1, 3, 7, 14, 30].includes(next.deadlineWindowDays))
+    if (!/^#[0-9a-f]{6}$/i.test(next.canvasBackground) || !["light", "dark", "system"].includes(next.canvasThemeMode) || ![1, 3, 7, 14, 30].includes(next.deadlineWindowDays) || typeof next.showCardGrades !== "boolean")
       throw new Error("Choose valid Coursewise settings.");
     await chrome.storage.local.set({ cwCanvasPreferences: next });
     return next;
@@ -104,7 +104,8 @@ async function handle(message, sender) {
     case "cw:setPreferences": return savePreferences({
       ...(message.canvasBackground === undefined ? {} : { canvasBackground: message.canvasBackground }),
       ...(message.canvasThemeMode === undefined ? {} : { canvasThemeMode: message.canvasThemeMode }),
-      ...(message.deadlineWindowDays === undefined ? {} : { deadlineWindowDays: message.deadlineWindowDays })
+      ...(message.deadlineWindowDays === undefined ? {} : { deadlineWindowDays: message.deadlineWindowDays }),
+      ...(message.showCardGrades === undefined ? {} : { showCardGrades: message.showCardGrades })
     });
     case "cw:syncCourses": {
       const rows = Array.isArray(message.courses) ? message.courses : [];

@@ -12,8 +12,8 @@ function appearancePreferences(patch) {
   const operation = appearanceQueue.then(async () => {
     const saved = await chrome.storage.local.get("cwCanvasPreferences");
     const preferences = saved.cwCanvasPreferences || {};
-    const next = { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, ...preferences, ...patch };
-    if (!/^#[0-9a-f]{6}$/i.test(next.canvasBackground) || !["light", "dark", "system"].includes(next.canvasThemeMode) || ![1, 3, 7, 14, 30].includes(next.deadlineWindowDays))
+    const next = { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, showCardGrades: true, ...preferences, ...patch };
+    if (!/^#[0-9a-f]{6}$/i.test(next.canvasBackground) || !["light", "dark", "system"].includes(next.canvasThemeMode) || ![1, 3, 7, 14, 30].includes(next.deadlineWindowDays) || typeof next.showCardGrades !== "boolean")
       throw { status: 400, message: "Choose valid Coursewise settings." };
     await chrome.storage.local.set({ cwCanvasPreferences: next });
     return next;
@@ -84,6 +84,7 @@ async function handle(message) {
       if (message.canvasBackground !== undefined) patch.canvasBackground = message.canvasBackground;
       if (message.canvasThemeMode !== undefined) patch.canvasThemeMode = message.canvasThemeMode;
       if (message.deadlineWindowDays !== undefined) patch.deadlineWindowDays = message.deadlineWindowDays;
+      if (message.showCardGrades !== undefined) patch.showCardGrades = message.showCardGrades;
       return appearancePreferences(patch);
     }
     case "cw:saveCourse": return request("/api/extension/course", { body: { canvasId: message.canvasId, name: message.name, code: message.code } });

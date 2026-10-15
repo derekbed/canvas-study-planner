@@ -48,6 +48,13 @@ test('deadline window persists and rejects unsupported values', async () => {
   assert.equal((await send({ deadlineWindowDays: 21 })).ok, false);
   assert.equal((await send({}, 'cw:getPreferences')).data.deadlineWindowDays, 7);
 });
+test('course card grade toggle persists and rejects non-boolean values', async () => {
+  const send = harness();
+  assert.equal((await send({}, 'cw:getPreferences')).data.showCardGrades, true);
+  assert.equal((await send({ showCardGrades: false })).ok, true);
+  assert.equal((await send({ showCardGrades: 'no' })).ok, false);
+  assert.equal((await send({}, 'cw:getPreferences')).data.showCardGrades, false);
+});
 test('data requests are blocked before disclosure consent', async () => {
   const send = harness({ cwDataConsent: false });
   const result = await send({}, 'cw:getPreferences');

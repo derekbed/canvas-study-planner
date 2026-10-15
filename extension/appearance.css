@@ -59,6 +59,10 @@
 }
 .cw-appearance-field, .cw-appearance-light-options, .cw-appearance-courses, .cw-appearance-course-controls { display: grid; gap: 10px; margin: 0; }
 .cw-appearance-field { font-weight: 650; }
+.cw-appearance-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.cw-appearance-dialog .cw-appearance-reset { justify-self: start; padding: 8px 14px; border: 1px solid var(--cw-line); border-radius: 9px; background: var(--cw-dialog-field); color: var(--cw-ink); font-size: 14px; font-weight: 650; }
+.cw-appearance-dialog .cw-appearance-reset:hover { border-color: var(--cw-teal); }
+.cw-appearance-toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--cw-teal, #138a81); cursor: pointer; }
 .cw-appearance-courses { border-top: 1px solid var(--cw-line); padding-top: 20px; }
 .cw-appearance-dialog select {
   width: 100%;
@@ -672,11 +676,32 @@ body.cw-canvas-themed :is([role="tabpanel"], [class*="tabs__panelsContainer"] > 
   color: var(--cw-canvas-ink) !important;
   border-color: var(--cw-dashboard-menu-outline) !important;
 }
-body.cw-canvas-themed :is([role="tabpanel"], [class*="tabs__panelsContainer"] > [class*="-panel"]) [data-cw-course-picture-menu-item] {
-  background: var(--cw-nav-background) !important;
-  color: var(--cw-nav-ink) !important;
+/* Coursewise hides Canvas' Move to top / Move to bottom actions. The Course
+   picture row is a copy of a native row, so it needs no styling of its own. */
+[data-cw-hidden-menu-item] { display: none !important; }
+
+/* The Coursewise sidebar is fully tinted by the selected palette, with no
+   near-white page-background patches: the frame and panels use the menu
+   surface, and every card inside it uses the course-card tint. */
+body.cw-canvas-themed:not(.cw-canvas-dark) {
+  --cw-hub-surface: color-mix(in srgb, var(--cw-canvas-background) 78%, var(--cw-nav-background));
+  --cw-hub-raised: color-mix(in srgb, var(--cw-canvas-background) 65%, var(--cw-nav-background));
+  --cw-hub-hover: color-mix(in srgb, var(--cw-canvas-background) 50%, var(--cw-nav-background));
+  --cw-hub-outline: color-mix(in srgb, var(--cw-canvas-ink) 25%, var(--cw-hub-surface));
 }
-body.cw-canvas-themed :is([role="tabpanel"], [class*="tabs__panelsContainer"] > [class*="-panel"]) [data-cw-course-picture-menu-item]:is(:hover, :focus-visible) {
-  background: var(--cw-canvas-link) !important;
-  color: #fff !important;
+body.cw-canvas-themed:not(.cw-canvas-dark) :is(.cw-hub, .cw-hub__spaces, .cw-hub__panel, .cw-hub__toolbar, .cw-hub__course-summary) {
+  background: var(--cw-hub-surface) !important;
+  border-color: var(--cw-hub-outline) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) :is(.cw-hub__space, .cw-hub__item, .cw-hub__empty, .cw-hub__date, .cw-hub__sort, .cw-hub__course-links, .cw-hub__more, .cw-hub__read-toggle, .cw-hub__check, .cw-hub__undo, .cw-hub__course-toggle, .cw-hub__course-refresh, .cw-rail-collapse, .cw-rail-reopen) {
+  background: var(--cw-hub-raised) !important;
+  border-color: var(--cw-hub-outline) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) .cw-hub__space[aria-selected="true"] {
+  border-color: var(--cw-space-outline) !important;
+}
+body.cw-canvas-themed:not(.cw-canvas-dark) .cw-hub__progress:before { background: var(--cw-hub-surface) !important; }
+body.cw-canvas-themed:not(.cw-canvas-dark) :is(.cw-hub__more, .cw-hub__read-toggle, .cw-hub__check, .cw-hub__course-toggle, .cw-hub__course-refresh, .cw-rail-collapse, .cw-rail-reopen):is(:hover, :focus-visible) {
+  background: var(--cw-hub-hover) !important;
 }

@@ -21,6 +21,8 @@
   const MAX_HORIZONTAL_CARD_HEIGHT = 500;
   const MIN_CARD_SCALE = 80;
   const MAX_CARD_SCALE = 150;
+  const DEFAULT_CARD_SCALE = 100;
+  const DEFAULT_HORIZONTAL_CARD_HEIGHT = 160;
   const MIN_RAIL_WIDTH = 320;
   const itemKey = item => item.courseId + ":" + item.id;
   const healthNames = { "on-track": "On track", watch: "Watch", "needs-attention": "Needs attention", "limited-data": "Limited data" };
@@ -158,6 +160,8 @@
     if (mode) mode.value = state.preferences.canvasThemeMode || "light";
     const deadlineWindow = document.querySelector('.cw-appearance-dialog select[aria-label="Next deadline window"]');
     if (deadlineWindow) deadlineWindow.value = String(deadlineWindowDays());
+    const gradeToggle = document.querySelector('.cw-appearance-dialog input[aria-label="Show grades on course cards"]');
+    if (gradeToggle) gradeToggle.checked = showCardGrades();
     const picker = document.querySelector('.cw-appearance-dialog input[type="color"]');
     if (picker) picker.value = palette.background(state.preferences.canvasBackground || "#f7faf9");
     document.querySelectorAll(".cw-appearance-dialog [data-background-color]").forEach(swatch => {
@@ -186,6 +190,18 @@
     deadlineSelect.value = String(deadlineWindowDays());
     deadlineSelect.addEventListener("change", () => saveAppearancePreferences({ deadlineWindowDays: Number(deadlineSelect.value) }));
     deadlineLabel.append(deadlineSelect); box.append(deadlineLabel);
+    const gradeLabel = node("label", undefined, "cw-appearance-field cw-appearance-toggle");
+    const gradeToggle = node("input"); gradeToggle.type = "checkbox"; gradeToggle.setAttribute("aria-label", "Show grades on course cards");
+    gradeToggle.checked = showCardGrades();
+    gradeToggle.addEventListener("change", () => saveAppearancePreferences({ showCardGrades: gradeToggle.checked }));
+    gradeLabel.append(gradeToggle, node("span", "Show grades on course cards")); box.append(gradeLabel);
+    const resetSize = node("button", "Reset card size", "cw-appearance-reset"); resetSize.type = "button";
+    resetSize.addEventListener("click", () => {
+      updateCardScale(DEFAULT_CARD_SCALE); saveCardScale();
+      updateHorizontalCardHeight(DEFAULT_HORIZONTAL_CARD_HEIGHT); saveHorizontalCardHeight();
+      const status = document.querySelector(".cw-appearance-status"); if (status) status.textContent = "Card size reset.";
+    });
+    box.append(resetSize);
     const darkNote = node("p", "Dark mode uses one fixed dark colorway.", "cw-appearance-dark-note"); box.append(darkNote);
     const colorways = node("div", undefined, "cw-appearance-light-options");
     colorways.append(node("strong", "Light background color"), node("span", "Choose a pastel or set a custom color.", "cw-hub__appearance-help"));
@@ -530,44 +546,81 @@
       pictureMenuCourseId = "";
       return;
     }
-    const panels = [...document.querySelectorAll('[role="tabpanel"]')];
-    const colorPanel = panels.find(candidate => candidate.textContent.includes("Nickname"))
-      || [...document.querySelectorAll("*")].find(candidate => candidate.textContent.trim().startsWith("Nickname") && candidate.textContent.includes("Cancel"));
-    let morePanel = panels.find(candidate => candidate !== colorPanel);
-    if (!morePanel) {
-      const moveOption = [...document.querySelectorAll("*")].find(candidate => candidate.children.length === 0 && candidate.textContent.trim() === "Move down");
-      for (let candidate = moveOption?.parentElement; candidate && candidate !== document.body; candidate = candidate.parentElement) {
-        if (/Move down/.test(candidate.textContent) && /Move to bottom/.test(candidate.textContent) && /Unfavorite/.test(candidate.textContent)) {
-          morePanel = candidate;
-          break;
-        }
-      }
-    }
+    // Find the More menu by its own items. Canvas can keep the Color panel
+    // mounted but empty, so picking "the panel that isn't Color" matched both
+    // panels and added the picture action twice.
+    const isMoveMenu = candidate => [...candidate.querySelectorAll('[role="menuitem"]')]
+      .some(option => /^(Move (to top|up|down|to bottom)|Unfavorite|Favorite)$/i.test(option.textContent.trim()));
+    const menu = [...document.querySelectorAll('[role="tabpanel"] [role="menu"]')].find(isMoveMenu);
     const moreTab = [...document.querySelectorAll('[role="tab"], button, [tabindex]')].find(tab => /^(Move|More)$/i.test(tab.textContent.trim()));
     if (moreTab) {
+      // This runs from the page MutationObserver. Assigning textContent always
+      // replaces the text node, so writing an unchanged label re-triggers the
+      // observer forever and freezes the tab.
       const label = [...moreTab.querySelectorAll("*")].reverse().find(element => !element.children.length && element.textContent.trim());
-      if (label) label.textContent = "More";
-      else moreTab.textContent = "More";
-      moreTab.setAttribute("aria-label", "More");
+      const target = label || moreTab;
+      if (target.textContent.trim() !== "More") target.textContent = "More";
+      if (moreTab.getAttribute("aria-label") !== "More") moreTab.setAttribute("aria-label", "More");
       if (!moreTab.dataset.cwMoreTabBound) {
         moreTab.dataset.cwMoreTabBound = "true";
         moreTab.addEventListener("click", () => setTimeout(addCoursePictureMenuItem, 50), true);
       }
     }
-    if (!morePanel || morePanel.querySelector("[data-cw-course-picture-menu-item]")) return;
-    const template = [...(colorPanel?.querySelectorAll("button") || [])].find(item => item.textContent.trim() === "Cancel") || colorPanel?.querySelector("button") || morePanel.querySelector("button");
+    // Only a copy that sits inside Canvas' menu is valid; drop any other.
+    document.querySelectorAll("[data-cw-course-picture-menu-item]").forEach(copy => {
+      if (copy.parentElement?.getAttribute("role") !== "menu") copy.remove();
+    });
+    if (!menu) return;
+    // Canvas re-renders its movement items as the card moves, so hide the
+    // jump-to-end actions on every pass. Attributes are not observed, and the
+    // guard keeps this idempotent.
+    for (const option of menu.querySelectorAll('[role="menuitem"]')) {
+      if (/^Move to (top|bottom)$/i.test(option.textContent.trim()) && !option.hasAttribute("data-cw-hidden-menu-item")) {
+        option.setAttribute("data-cw-hidden-menu-item", "true");
+        option.tabIndex = -1;
+      }
+    }
+    if (menu.querySelector("[data-cw-course-picture-menu-item]")) return;
+    const courseId = pictureMenuCourseId;
+    const open = event => { event.preventDefault(); event.stopPropagation(); openCoursePicturePopup(courseId); };
+    // Copy one of Canvas' own rows so the picture action matches its width,
+    // font, color, icon, spacing, hover and focus styles.
+    const template = [...menu.querySelectorAll('[role="menuitem"]')].find(option => !option.hasAttribute("data-cw-hidden-menu-item") && option.querySelector("svg"));
     if (!template) return;
     const item = template.cloneNode(true);
     for (const element of [item, ...item.querySelectorAll("*")]) {
-      element.removeAttribute("id"); element.removeAttribute("data-testid"); element.removeAttribute("aria-labelledby"); element.removeAttribute("aria-checked"); element.removeAttribute("aria-selected"); element.removeAttribute("href");
+      element.removeAttribute("id"); element.removeAttribute("data-testid"); element.removeAttribute("aria-labelledby"); element.removeAttribute("aria-checked"); element.removeAttribute("aria-selected"); element.removeAttribute("aria-disabled"); element.removeAttribute("href"); element.removeAttribute("data-cw-hidden-menu-item");
     }
     item.dataset.cwCoursePictureMenuItem = "true";
-    item.setAttribute("aria-label", "Course picture"); item.tabIndex = 0;
+    item.setAttribute("role", "menuitem");
+    item.setAttribute("aria-label", "Course picture");
+    item.tabIndex = 0;
+    if (item.tagName === "BUTTON") item.type = "button";
+    const svg = item.querySelector("svg");
+    if (svg) {
+      svg.setAttribute("name", "IconImage");
+      svg.setAttribute("viewBox", "0 0 1920 1920");
+      svg.replaceChildren(...coursePictureIconPaths());
+    }
     const label = [...item.querySelectorAll("*")].reverse().find(element => !element.children.length && element.textContent.trim());
     if (label) label.textContent = "Course picture"; else item.textContent = "Course picture";
-    const courseId = pictureMenuCourseId;
-    item.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); openCoursePicturePopup(courseId); }, true);
-    morePanel.append(item);
+    item.addEventListener("click", open, true);
+    item.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") open(event); }, true);
+    menu.prepend(item);
+  }
+  function coursePictureIconPaths() {
+    const ns = "http://www.w3.org/2000/svg";
+    const path = (d, evenOdd = false) => {
+      const element = document.createElementNS(ns, "path");
+      element.setAttribute("d", d);
+      if (evenOdd) element.setAttribute("fill-rule", "evenodd");
+      return element;
+    };
+    return [
+      path("M120 240h1680v1440H120z M240 360v1200h1440V360z", true),
+      path("M240 1560 720 960l360 360 240-240 360 360v120z"),
+      path("M1260 570a150 150 0 1 0 0 300 150 150 0 1 0 0-300z")
+    ];
   }
   function applyRailSize() {
     if (state.railCollapsed || route()?.type !== "dashboard") return;
@@ -829,6 +882,9 @@
       }
     }
   }
+  function showCardGrades() {
+    return state.preferences.showCardGrades !== false;
+  }
   function deadlineWindowDays() {
     return [1, 3, 7, 14, 30].includes(state.preferences.deadlineWindowDays) ? state.preferences.deadlineWindowDays : 14;
   }
@@ -873,9 +929,13 @@
       const course = loadedCourse || placeholder(id);
       const hero = card.querySelector('.ic-DashboardCard__header_hero, .ic-DashboardCard__header, .DashboardCard__header, .course-card__header') || card;
       hero.style.position = "relative";
-      const badge = makeGradeBadge(course, !loadedCourse && state.loading), oldBadge = card.querySelector(".cw-card-grade");
-      if (!oldBadge) hero.append(badge);
-      else if (oldBadge.textContent !== badge.textContent || oldBadge.dataset.state !== badge.dataset.state) oldBadge.replaceWith(badge);
+      const oldBadge = card.querySelector(".cw-card-grade");
+      if (!showCardGrades()) oldBadge?.remove();
+      else {
+        const badge = makeGradeBadge(course, !loadedCourse && state.loading);
+        if (!oldBadge) hero.append(badge);
+        else if (oldBadge.textContent !== badge.textContent || oldBadge.dataset.state !== badge.dataset.state) oldBadge.replaceWith(badge);
+      }
       const deadline = makeDeadline(id), oldDeadline = card.querySelector(".cw-card-due");
       if (!oldDeadline) card.append(deadline);
       else if (oldDeadline.textContent !== deadline.textContent) oldDeadline.replaceWith(deadline);
@@ -1191,7 +1251,7 @@
         }
         if (!state.railCollapsed && document.querySelector(".cw-hub--rail") && !document.querySelector(".cw-rail-collapse")) showCollapseTab();
         if (dashboardCards().some(({ id, card }) =>
-          (state.courses.has(id) && !card.querySelector(".cw-card-grade")) ||
+          (state.courses.has(id) && showCardGrades() !== Boolean(card.querySelector(".cw-card-grade"))) ||
           Boolean(savedCourse(id)?.image_url) !== Boolean(card.querySelector(".cw-custom-course-picture")))) renderCards();
         for (const id of visibleIds(current)) {
           if (state.courses.has(id) && !state.requested.has(id) && state.requested.size < 30) loadCourseData(id, state.generation);

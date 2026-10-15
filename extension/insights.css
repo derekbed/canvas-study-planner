@@ -20,6 +20,10 @@ body.cw-organizer-dashboard .ic-DashboardCard{
   overflow:hidden;
 }
 body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard{zoom:var(--cw-card-zoom,1)}
+/* A smaller course options button so it competes less with the course picture. */
+body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard :is(.ic-DashboardCard__header-button,.ic-DashboardCard__header-button-bg){width:28px!important;height:28px!important;min-width:0!important;min-height:0!important;top:10px!important;right:10px!important;padding:0!important}
+body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .ic-DashboardCard__header-button{display:inline-flex!important;align-items:center;justify-content:center;line-height:1!important}
+body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .ic-DashboardCard__header-button .icon-more{font-size:14px!important;line-height:1!important}
 body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .cw-card-resize-handle{
   position:absolute;z-index:8;right:0;bottom:0;width:25px;height:25px;
   cursor:nwse-resize;touch-action:none;
