@@ -8,6 +8,8 @@ After you approve a specific school's HTTPS Canvas domain, Coursewise reads your
 
 Coursewise stores the school domains you connect, course names, appearance choices, course pictures you choose, organizer layout choices, and numeric IDs of assignments you mark as read in Chrome local extension storage. Grade values, assignment details, and announcement content are used in page memory and are not stored by Coursewise. Chrome and Canvas may handle data under their own policies.
 
+The extension requests a public version file from GitHub at startup and about once an hour. It sends no Canvas data or account identifier in that request, but GitHub receives the network request. The last valid policy is cached locally.
+
 ## Sharing and retention
 
 The extension sends Canvas API requests only to the school Canvas domain you connected, using your existing Canvas sign-in. It does not send Canvas data to a Coursewise server, AI provider, analytics provider, advertiser, or data broker. The developer cannot read your locally stored Canvas data. Coursewise does not sell data or use it for ads.

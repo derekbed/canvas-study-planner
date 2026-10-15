@@ -14,9 +14,9 @@ test("local release supports user-granted school origins without website or AI c
     assert.equal(result.status, 0, result.stderr);
     const manifest = JSON.parse(readFileSync(join(out, "manifest.json"), "utf8"));
     assert.equal(manifest.version, "0.1.4");
-    assert.deepEqual(manifest.host_permissions, []);
+    assert.deepEqual(manifest.host_permissions, ["https://raw.githubusercontent.com/*"]);
     assert.deepEqual(manifest.optional_host_permissions, ["https://*/*"]);
-    assert.deepEqual(manifest.permissions, ["sidePanel", "storage", "scripting"]);
+    assert.deepEqual(manifest.permissions, ["sidePanel", "storage", "scripting", "alarms"]);
     assert.equal(manifest.minimum_chrome_version, "119");
     assert.equal(manifest.key, undefined);
     assert.equal(manifest.content_scripts, undefined);
@@ -101,4 +101,33 @@ test("schools register separately and a disconnected school loses access and set
   assert.equal(storage.cwLocalSchools["https://one.example.edu"], undefined);
   assert.equal((await send({ type: "cw:getWorkspace" }, one)).ok, false);
   assert.equal(typeof removedListener, "function");
+});
+
+test("minimum version policy stops outdated Canvas scripts and survives an offline restart", async () => {
+  const code = readFileSync(new URL("../background.js", import.meta.url), "utf8");
+  const storage = { cwDataConsent: true };
+  const scripts = new Map([["cw-main-school", { id: "cw-main-school" }]]);
+  const policy = { minimumVersion: "0.1.5", latestVersion: "0.1.5", updateUrl: "https://example.com/update" };
+  const run = fetch => {
+    let listener;
+    const chrome = {
+      runtime: { id: "local-extension", getManifest: () => ({ version: "0.1.4" }), onMessage: { addListener(fn) { listener = fn; } } },
+      sidePanel: { setPanelBehavior() {} },
+      storage: { local: { async get(key) { return { [key]: storage[key] }; }, async set(value) { Object.assign(storage, value); } } },
+      permissions: { onRemoved: { addListener() {} } },
+      scripting: {
+        async getRegisteredContentScripts() { return [...scripts.values()]; },
+        async unregisterContentScripts({ ids }) { ids.forEach(id => scripts.delete(id)); }
+      }
+    };
+    vm.runInNewContext(code, { chrome, URL, btoa, console, Promise, AbortController, setTimeout, clearTimeout, fetch });
+    return message => new Promise(resolve => listener(message, { id: chrome.runtime.id }, resolve));
+  };
+  const online = run(async () => ({ ok: true, json: async () => policy }));
+  assert.equal((await online({ type: "cw:versionStatus" })).data.updateRequired, true);
+  assert.equal(scripts.size, 0);
+  assert.equal((await online({ type: "cw:listSchools" })).ok, false);
+  assert.equal(storage.cwVersionPolicy.minimumVersion, "0.1.5");
+  const offline = run(async () => { throw new Error("offline"); });
+  assert.equal((await offline({ type: "cw:versionStatus" })).data.updateRequired, true);
 });

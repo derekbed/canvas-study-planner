@@ -12,9 +12,10 @@
   "permissions": [
     "sidePanel",
     "storage",
-    "scripting"
+    "scripting",
+    "alarms"
   ],
-  "host_permissions": [],
+  "host_permissions": ["https://raw.githubusercontent.com/*"],
   "background": {
     "service_worker": "background.js"
   },

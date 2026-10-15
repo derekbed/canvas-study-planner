@@ -14,11 +14,21 @@ const objects=new Map(),env={DB:db,BUCKET:{async delete(key){objects.delete(key)
 const modules=new Map();
 function load(filename){filename=path.resolve(root,filename);if(!path.extname(filename))filename+='.ts';if(modules.has(filename))return modules.get(filename).exports;const module={exports:{}};modules.set(filename,module);const code=ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;new vm.Script(`(function(require,module,exports){${code}\n})`,{filename}).runInThisContext()((name)=>name==='cloudflare:workers'?{env}:name.startsWith('@/')?load(name.slice(2)):name.startsWith('.')?load(path.resolve(path.dirname(filename),name)):require(name),module,module.exports);return module.exports;}
 const api=load('app/api/workspace/route.ts'),imports=load('app/api/calendar/import/route.ts'),ics=load('lib/ics.ts'),grades=load('lib/grades.ts'),planner=load('lib/planner.ts');
-const req=(data,user='student-a',url='/api/workspace')=>new Request('https://test.example'+url,{method:'POST',headers:{'Content-Type':'application/json','oai-authenticated-user-id':user},body:JSON.stringify(data)});
+const req=(data,user='student-a',url='/api/workspace')=>new Request('https://test.example'+url,{method:'POST',headers:{'Content-Type':'application/json','oai-authenticated-user-id':user,Origin:'https://test.example'},body:JSON.stringify(data)});
 async function mutate(action,data={},user='student-a'){const response=await api.POST(req({action,...data},user));const result=await response.json();assert.equal(response.status,200,result.error);return result;}
 const calendar=(events)=>`BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${events.join('\r\n')}\r\nEND:VCALENDAR`;
 const event=(uid,title='Essay [ENG 101]',date='20261009T230000Z',extra='')=>`BEGIN:VEVENT\r\nUID:${uid}\r\nSUMMARY:${title}\r\nDTSTART:${date}\r\n${extra}\r\nEND:VEVENT`;
 async function importFeed(text,user='student-a'){return imports.POST(req({icsText:text},user));}
+
+test('workspace mutations reject cross-origin requests and private responses are not cached',async()=>{
+ const forged=new Request('https://test.example/api/workspace',{method:'POST',headers:{'Content-Type':'application/json','oai-authenticated-user-id':'student-a',Origin:'https://other.example'},body:JSON.stringify({action:'course:create',name:'Forged'})});
+ assert.equal((await api.POST(forged)).status,401);
+ const valid=await api.POST(req({action:'course:create',name:'Allowed'},'origin-check'));
+ assert.equal(valid.status,200);
+ assert.equal(valid.headers.get('Cache-Control'),'private, no-store');
+ const workspace=await api.GET(new Request('https://test.example/api/workspace',{headers:{'oai-authenticated-user-id':'origin-check'}}));
+ assert.equal(workspace.headers.get('Cache-Control'),'private, no-store');
+});
 
 test('calendar import reconciles safely, preserves manual data and completion, and isolates students',async()=>{
  let data=await mutate('course:create',{name:'English',code:'ENG 101'});const course=data.courses.find(c=>c.code==='ENG 101');

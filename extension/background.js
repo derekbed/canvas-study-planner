@@ -4,6 +4,57 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 const defaults = { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, showCardGrades: true };
 const PREFERENCE_KEYS = Object.keys(defaults);
 const MAIN_FILES = ["insights-model.js", "course-health.js", "vendor/libheif-without-unsafe-eval.js", "course-image.js", "insights.js"];
+const VERSION_POLICY_URL = "https://raw.githubusercontent.com/derekbed/canvas-study-planner/main/docs/extension-version.json";
+const VERSION_CHECK_INTERVAL = 60 * 60 * 1000;
+let versionPolicy = null;
+let versionCheckedAt = 0;
+let versionCheck = null;
+function compareVersions(left, right) {
+  const a = left.split(".").map(Number), b = right.split(".").map(Number);
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+}
+function validVersion(value) { return typeof value === "string" && /^\d+\.\d+\.\d+$/.test(value); }
+async function checkVersion(force = false) {
+  if (!force && Date.now() - versionCheckedAt < VERSION_CHECK_INTERVAL) return versionPolicy;
+  if (versionCheck) return versionCheck;
+  versionCheck = (async () => {
+    try {
+      if (!versionPolicy) {
+        const saved = (await chrome.storage.local.get("cwVersionPolicy")).cwVersionPolicy;
+        if (saved && validVersion(saved.minimumVersion) && validVersion(saved.latestVersion) &&
+            typeof saved.updateUrl === "string" && /^https:\/\//.test(saved.updateUrl)) versionPolicy = saved;
+      }
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      let response;
+      try { response = await fetch(VERSION_POLICY_URL, { cache: "no-store", signal: controller.signal }); }
+      finally { clearTimeout(timeout); }
+      if (!response.ok) throw new Error("Version policy unavailable");
+      const policy = await response.json();
+      if (!validVersion(policy.minimumVersion) || !validVersion(policy.latestVersion) ||
+          typeof policy.updateUrl !== "string" || !/^https:\/\//.test(policy.updateUrl)) throw new Error("Invalid version policy");
+      versionPolicy = policy;
+      versionCheckedAt = Date.now();
+      await chrome.storage.local.set({ cwVersionPolicy: policy });
+      if (compareVersions(chrome.runtime.getManifest().version, policy.minimumVersion) < 0) {
+        const scripts = await chrome.scripting.getRegisteredContentScripts();
+        const active = scripts.filter(script => /^cw-(main|frame|boot)-/.test(script.id)).map(script => script.id);
+        if (active.length) await chrome.scripting.unregisterContentScripts({ ids: active });
+      }
+    } catch { /* Keep the last valid policy when offline. */ }
+    versionCheckedAt = Date.now();
+    return versionPolicy;
+  })();
+  try { return await versionCheck; } finally { versionCheck = null; }
+}
+async function versionStatus() {
+  const policy = await checkVersion();
+  const installedVersion = chrome.runtime.getManifest().version;
+  return { installedVersion, updateRequired: Boolean(policy && compareVersions(installedVersion, policy.minimumVersion) < 0),
+    updateAvailable: Boolean(policy && compareVersions(installedVersion, policy.latestVersion) < 0),
+    updateUrl: policy?.updateUrl || null };
+}
 let saveQueue = Promise.resolve();
 let schoolQueue = Promise.resolve();
 function validOrigin(value) {
@@ -31,6 +82,7 @@ function updateSchools(change, notifyAppearance = false) {
   return task;
 }
 async function registerSchoolScripts(origin) {
+  if ((await versionStatus()).updateRequired) return;
   if (!validOrigin(origin)) throw new Error("Enter a valid HTTPS Canvas domain.");
   if (!await chrome.permissions.contains({ origins: [`${origin}/*`] })) throw new Error("Allow access to this Canvas domain first.");
   const [main, frame, boot] = ids(origin);
@@ -89,6 +141,8 @@ function savePreferences(patch) {
   return task;
 }
 async function handle(message, sender) {
+  if (message.type === "cw:versionStatus") return versionStatus();
+  if ((await versionStatus()).updateRequired) throw new Error("Coursewise needs an update before it can run. Open the side panel to update.");
   const saved = await chrome.storage.local.get("cwDataConsent");
   if (saved.cwDataConsent !== true) throw new Error("Accept the data disclosure in the side panel first.");
   if (!sender.tab) {
@@ -151,3 +205,7 @@ chrome.permissions.onRemoved.addListener(({ origins = [] }) => {
 });
 chrome.runtime.onStartup?.addListener(() => { restoreSchoolScripts().catch(() => {}); });
 chrome.runtime.onInstalled?.addListener(() => { restoreSchoolScripts().catch(() => {}); });
+chrome.runtime.onStartup?.addListener(() => { checkVersion(true).catch(() => {}); });
+chrome.runtime.onInstalled?.addListener(() => { checkVersion(true).catch(() => {}); });
+chrome.alarms?.create("cw-version-check", { periodInMinutes: 60 });
+chrome.alarms?.onAlarm.addListener(alarm => { if (alarm.name === "cw-version-check") checkVersion(true).catch(() => {}); });

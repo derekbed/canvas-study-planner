@@ -8,7 +8,7 @@ function harness(initial = {}) {
   let listener;
   vm.runInNewContext(source, { chrome: {
     sidePanel: { setPanelBehavior() {} },
-    runtime: { id: "local-extension", onMessage: { addListener(fn) { listener = fn; } } },
+    runtime: { id: "local-extension", getManifest() { return { version: "0.1.4" }; }, onMessage: { addListener(fn) { listener = fn; } } },
     permissions: { async contains() { return true; }, onRemoved: { addListener() {} } },
     scripting: { async getRegisteredContentScripts() { return []; }, async registerContentScripts() {}, async unregisterContentScripts() {} },
     storage: { session: {
@@ -20,7 +20,8 @@ function harness(initial = {}) {
       async set(value) { Object.assign(data, structuredClone(value)); },
       async remove(keys) { keys.forEach(key => delete data[key]); }
     } }
-  }, Date, URL, btoa });
+  }, Date, URL, btoa, AbortController, setTimeout, clearTimeout,
+  fetch: async () => ({ ok: true, json: async () => ({ minimumVersion: "0.1.4", latestVersion: "0.1.4", updateUrl: "https://example.com/update" }) }) });
   return (patch, type = 'cw:setPreferences') => new Promise(resolve => listener({ type, ...patch }, { id: 'local-extension', tab: {}, url: 'https://canvas.upenn.edu/' }, resolve));
 }
 test('unpaired appearance changes persist and retain Match system', async () => {
