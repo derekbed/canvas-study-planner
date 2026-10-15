@@ -41,10 +41,13 @@ const manifest = JSON.parse(await readFile(join(source, "manifest.json"), "utf8"
 manifest.name = "Coursewise for Canvas";
 manifest.version = "0.1.4";
 manifest.description = "Customize Canvas and view local course deadlines, grades, and announcements.";
+manifest.icons = { "16": "icon16.png", "32": "icon32.png", "48": "icon48.png", "128": "icon128.png" };
+manifest.action.default_icon = { "16": "icon16.png", "32": "icon32.png" };
+manifest.action.default_title = "Open Coursewise";
 manifest.minimum_chrome_version = "119";
 delete manifest.key;
-manifest.permissions = ["sidePanel", "storage", "scripting"];
-manifest.host_permissions = [];
+manifest.permissions = ["sidePanel", "storage", "scripting", "alarms"];
+manifest.host_permissions = ["https://raw.githubusercontent.com/*"];
 manifest.optional_host_permissions = ["https://*/*"];
 delete manifest.content_scripts;
 await writeFile(join(output, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");

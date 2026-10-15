@@ -1,6 +1,20 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const disclosure = $("disclosure"), ready = $("ready"), consent = $("data-consent"), next = $("continue");
+async function checkVersion() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "cw:versionStatus" });
+    if (!response?.ok || !response.data?.updateRequired) return false;
+    const status = response.data;
+    disclosure.hidden = true;
+    ready.hidden = true;
+    $("version-update").hidden = false;
+    $("version-update-message").textContent = `Version ${status.installedVersion} is no longer supported. Update Coursewise to continue using its Canvas features.`;
+    if (status.updateUrl) $("version-update-link").href = status.updateUrl;
+    else $("version-update-link").hidden = true;
+    return true;
+  } catch { return false; }
+}
 function show(accepted) { disclosure.hidden = accepted; ready.hidden = !accepted; if (accepted) loadSchools(); }
 async function ask(type, origin) {
   const response = await chrome.runtime.sendMessage({ type, origin });
@@ -53,4 +67,8 @@ $("school-form").addEventListener("submit", async event => {
   } catch (error) { $("school-status").textContent = error.message; }
   finally { button.disabled = false; }
 });
-chrome.storage.local.get("cwDataConsent").then(data => show(data.cwDataConsent === true));
+(async () => {
+  if (await checkVersion()) return;
+  const data = await chrome.storage.local.get("cwDataConsent");
+  show(data.cwDataConsent === true);
+})();

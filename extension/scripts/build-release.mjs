@@ -33,6 +33,9 @@ for (const file of files) {
     const manifest = JSON.parse(text);
     manifest.name = "Coursewise Canvas Bridge";
     manifest.description = "Plan Canvas coursework and use your Coursewise study workspace.";
+    manifest.icons = { "16": "icon16.png", "32": "icon32.png", "48": "icon48.png", "128": "icon128.png" };
+    manifest.action.default_icon = { "16": "icon16.png", "32": "icon32.png" };
+    manifest.action.default_title = "Open Coursewise";
     manifest.host_permissions = [`${canvas}/*`, `${site}/*`];
     for (const script of manifest.content_scripts) script.matches = [`${canvas}/*`];
     text = JSON.stringify(manifest, null, 2) + "\n";

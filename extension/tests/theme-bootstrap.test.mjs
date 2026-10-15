@@ -22,13 +22,15 @@ function element() {
     }
   };
 }
-function page({ preferences, storage = new Map(), systemDark = false, blocked = false } = {}) {
+function page({ preferences, storage = new Map(), systemDark = false, blocked = false, frames = [] } = {}) {
   if (preferences) storage.set(cacheKey, JSON.stringify(preferences));
-  const document = { body: null, documentElement: element(), querySelectorAll() { return []; } };
+  const document = { body: null, documentElement: element(), querySelectorAll(selector) { return selector === "iframe" ? frames : []; } };
   let changed, resolveStorage, rejectStorage;
   const stored = new Promise((resolve, reject) => { resolveStorage = resolve; rejectStorage = reject; });
   const context = vm.createContext({
     document,
+    location: { href: "https://canvas.upenn.edu/courses/123", origin: "https://canvas.upenn.edu" },
+    URL,
     MutationObserver: class { constructor(fn) { changed = fn; } observe() {} },
     matchMedia() { return { matches: systemDark }; },
     localStorage: {
@@ -65,6 +67,39 @@ test("dark mode starts dark even when the operating system is light", () => {
   assert.equal(view.color(), "#111923");
   view.insertBody();
   assert.equal(view.document.body.classes.has("cw-canvas-dark"), true);
+});
+
+test("calendar events use a softer surface with readable text across themes", () => {
+  const rgb = color => [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16));
+  for (const [color, dark] of [
+    ...["#f2f9f6", "#f2edff", "#fff0e5", "#e9f8ef", "#fff8d7", "#ffedf2", "#e8f4ff", "#e2888c", "#293b48"].map(color => [color, false]),
+    ["#ffedf2", true]
+  ]) {
+    const view = page({ preferences: { canvasBackground: color, canvasThemeMode: dark ? "dark" : "light" } });
+    const tokens = view.document.documentElement.properties;
+    const surface = tokens.get("--cw-calendar-event-surface");
+    assert.notEqual(surface, view.color());
+    assert.ok(view.palette.contrast(rgb(surface), rgb(tokens.get("--cw-canvas-ink"))) >= 4.5, `${color} event text contrast`);
+  }
+});
+
+test("the selected theme reaches embedded Canvas assessment frames", () => {
+  const received = [];
+  const frame = {
+    getAttribute() { return "/courses/123/assignments/456/taking/789"; },
+    addEventListener(_type, listener) { this.onload = listener; },
+    contentWindow: { postMessage(message) { received.push(message); } }
+  };
+  const external = {
+    getAttribute() { return "https://example.com/embed"; },
+    addEventListener() { assert.fail("External frame should not be themed"); }
+  };
+  const view = page({ preferences: { canvasBackground: "#ffedf2", canvasThemeMode: "light" }, frames: [frame, external] });
+  assert.equal(received[0].tokens["--cw-canvas-background"], "#ffedf2");
+  frame.onload();
+  assert.equal(received.length, 2);
+  view.palette.applyTheme("#ffedf2", true, "dark");
+  assert.equal(received.at(-1).tokens["--cw-canvas-background"], "#111923");
 });
 
 test("system mode resolves the current system appearance on each new page", () => {

@@ -5,14 +5,16 @@ import vm from 'node:vm';
 
 const source = fs.readFileSync(new URL('../canvas-app.js', import.meta.url), 'utf8');
 const model = fs.readFileSync(new URL('../insights-model.js', import.meta.url), 'utf8');
-function harness(favorites, fail = false, chromeRuntime = { id: 'test-extension', async sendMessage() { return { ok: true, data: {} }; } }) {
+function harness(favorites, fail = false, chromeRuntime = { id: 'test-extension', async sendMessage() { return { ok: true, data: {} }; } }, fetchOverride) {
   const requests = [];
   const context = vm.createContext({
     location: { origin: 'https://canvas.upenn.edu', reload() {} },
     chrome: { runtime: chromeRuntime },
+    document: { querySelectorAll() { return []; } },
     window: { addEventListener() {} }, URL, AbortController, crypto, setTimeout, clearTimeout,
     async fetch(url) {
       requests.push(url.pathname);
+      if (fetchOverride) return fetchOverride(url);
       const isFavorites = url.pathname === '/api/v1/users/self/favorites/courses';
       return { ok: !(fail && isFavorites), headers: { get: key => key === 'content-type' ? 'application/json' : null },
         json: async () => isFavorites ? favorites : [] };
@@ -22,9 +24,31 @@ function harness(favorites, fail = false, chromeRuntime = { id: 'test-extension'
   vm.runInContext(fs.readFileSync(new URL('../palette.js', import.meta.url), 'utf8'), context);
   // Expose the app's data layer before its DOM startup code runs.
   vm.runInContext(source.slice(0, source.indexOf('\n  function initialize() {')) +
-    '\n render = () => {}; globalThis.app = { state, loadLive, courseList, broker, ask, loadCourseChats }; })();', context);
+    '\n render = () => {}; globalThis.app = { state, loadAll, loadLive, courseList, broker, ask, loadCourseChats }; })();', context);
   return { app: context.app, requests };
 }
+
+test('Coursewise session opens while Canvas data is still loading', async () => {
+  let releaseCanvas;
+  const canvasPending = new Promise(resolve => { releaseCanvas = resolve; });
+  const runtime = { id: 'test-extension', async sendMessage(message) {
+    if (message.type === 'cw:getSession') return { ok: true, data: { paired: true } };
+    if (message.type === 'cw:getWorkspace') return { ok: true, data: { courses: [] } };
+    return { ok: false, error: { message: 'Preferences unavailable' } };
+  } };
+  const { app } = harness([], false, runtime, async url => {
+    if (url.pathname === '/api/v1/users/self/favorites/courses') await canvasPending;
+    return { ok: true, headers: { get: key => key === 'content-type' ? 'application/json' : null }, json: async () => [] };
+  });
+  app.state.active = true;
+  await app.loadAll();
+  assert.equal(app.state.session.paired, true);
+  assert.equal(app.state.connecting, false);
+  assert.equal(app.state.loading, true);
+  releaseCanvas();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(app.state.loading, false);
+});
 
 test('course list contains dashboard favorites only, retaining saved customization', async () => {
   const { app, requests } = harness([{ id: 12, name: 'Canvas title', course_code: 'TEST' }]);

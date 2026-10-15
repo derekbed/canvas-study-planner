@@ -3,7 +3,7 @@ import { database, jsonError, cleanText, numberIn, now, userId, workspace } from
 
 export async function GET(request: Request) {
   const user = await userId(request); if (!user) return jsonError("Sign in to view your workspace.", 401);
-  try { return Response.json(await workspace(user)); }
+  try { return Response.json(await workspace(user), { headers: { "Cache-Control": "private, no-store" } }); }
   catch (error) { console.error("Workspace load failed", error); return jsonError("Your workspace could not load. Please try again.", 503); }
 }
 
@@ -75,6 +75,6 @@ export async function POST(request: Request) {
     } else {
       return jsonError("Unknown action.");
     }
-    return Response.json(await workspace(user));
+    return Response.json(await workspace(user), { headers: { "Cache-Control": "private, no-store" } });
   } catch { return jsonError("Your changes could not be saved. Please try again.", 503); }
 }

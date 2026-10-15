@@ -21,8 +21,10 @@ Coursewise adds appearance settings and course organization tools to the Canvas 
 - **sidePanel:** Shows the consent and school connection controls in Chrome's side panel.
 - **storage:** Saves consent, connected school domains, appearance settings, course names and pictures, organizer layout, and numeric read-state IDs in Chrome local storage.
 - **scripting:** Registers packaged Canvas scripts only for school domains the user explicitly connects.
+- **alarms:** Schedules an hourly check for minimum supported and latest versions.
+- **GitHub host access:** Reads only the public version policy at `raw.githubusercontent.com`; the request includes no Canvas data or account identifier.
 - **Optional HTTPS host access:** Allows users at any school with an HTTPS Canvas domain to grant access to that exact domain. No host access is requested at installation; no other domain is registered automatically.
-- **Remote code:** None. All executable JavaScript is included in the extension package. Canvas API responses are data, not executable code.
+- **Remote code:** None. All executable JavaScript is included in the extension package. A public GitHub JSON file provides minimum and latest version numbers and an update URL; it is data, not executable code.
 - **Data handling:** The extension processes Canvas course names, grades, assignments, announcements, and relevant Canvas URLs in the browser. Course names and appearance choices are stored locally; grade and announcement details stay in page memory. The extension does not transfer Canvas data to a Coursewise server or third-party analytics/advertising service. Canvas requests use the student's existing Canvas session to the connected school domain.
 - **Limited use:** Certify only after confirming the final package and public privacy policy match these practices. Treat Canvas data and website content as user data in the dashboard declarations; do not mark the extension as handling no user data.
 - **Privacy-policy URL:** `https://derekbed.github.io/canvas-study-planner/` (deployed and verified October 7, 2026). Use this public policy in the dashboard. The bundled `privacy.html` is an in-extension copy, not the dashboard URL.

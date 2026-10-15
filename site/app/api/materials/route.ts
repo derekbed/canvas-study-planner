@@ -1,14 +1,15 @@
 import { bucket, cleanText, database, jsonError, now, userId } from "@/lib/server";
 import { extractMaterialText } from "@/lib/material-text";
+import { validStudyFile } from "@/lib/upload-validation";
 
 export async function POST(request: Request) {
   const user = await userId(request); if (!user) return jsonError("Sign in first.", 401);
+  if (Number(request.headers.get("content-length") || 0) > 21_000_000) return jsonError("Files must be under 20 MB.", 413);
   let form: FormData;
   try { form = await request.formData(); } catch { return jsonError("Could not read the file."); }
   const file = form.get("file"), courseId = cleanText(form.get("courseId"), 150), kind = cleanText(form.get("kind"), 30) || "notes";
   if (!(file instanceof File) || !courseId) return jsonError("Choose a course and file.");
-  if (file.size > 20 * 1024 * 1024) return jsonError("Files must be under 20 MB.");
-  if (!["application/pdf", "text/plain", "text/markdown"].includes(file.type) && !/\.(pdf|txt|md)$/i.test(file.name)) return jsonError("Upload a PDF, TXT, or Markdown file.");
+  if (!await validStudyFile(file, 20 * 1024 * 1024)) return jsonError("Upload a valid PDF, TXT, or Markdown file under 20 MB.");
   const db = database();
   const course = await db.prepare("SELECT id FROM courses WHERE id=? AND user_id=?").bind(courseId, user).first();
   if (!course) return jsonError("Course not found.", 404);

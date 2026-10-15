@@ -7,6 +7,24 @@ if (chrome.sidePanel?.setPanelBehavior) {
 }
 // Appearance belongs to this browser and must work without an account or server.
 let appearanceQueue = Promise.resolve();
+let coursePictureQueue = Promise.resolve();
+const COURSE_PICTURES_KEY = "cwCanvasCoursePictures";
+function localCoursePictures(origin, courseId, imageUrl) {
+  const operation = coursePictureQueue.then(async () => {
+    const saved = (await chrome.storage.local.get(COURSE_PICTURES_KEY))[COURSE_PICTURES_KEY] || {};
+    if (courseId === undefined) return saved[origin] || {};
+    if (!/^\d+$/.test(String(courseId)) || typeof imageUrl !== "string" ||
+        (imageUrl && (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(imageUrl) || imageUrl.length > 700000)))
+      throw { status: 400, message: "Choose a supported course picture." };
+    const school = { ...(saved[origin] || {}) };
+    if (imageUrl) school[String(courseId)] = imageUrl;
+    else delete school[String(courseId)];
+    await chrome.storage.local.set({ [COURSE_PICTURES_KEY]: { ...saved, [origin]: school } });
+    return { imageUrl };
+  });
+  coursePictureQueue = operation.catch(() => {});
+  return operation;
+}
 function appearancePreferences(patch) {
   const operation = appearanceQueue.then(async () => {
     const saved = await chrome.storage.local.get("cwCanvasPreferences");
@@ -48,10 +66,12 @@ function decodeBase64(value) {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
-async function handle(message) {
+async function handle(message, sender) {
   const consent = await chrome.storage.local.get("cwDataConsent");
   if (consent.cwDataConsent !== true) throw { status: 403, message: "Open the Coursewise side panel and agree to the data disclosure first." };
   switch (message.type) {
+    case "cw:getLocalCoursePictures": return localCoursePictures(new URL(sender.url).origin);
+    case "cw:styleLocalCoursePicture": return localCoursePictures(new URL(sender.url).origin, message.canvasId, message.imageUrl);
     case "cw:getSession": {
       const current = await session();
       return { paired: Boolean(current), expiresAt: current?.expiresAt || 0 };
@@ -112,7 +132,7 @@ async function handle(message) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!sender.tab || !/^https:\/\/canvas\.upenn\.edu\//.test(sender.url || "") ||
       !message || typeof message.type !== "string" || !message.type.startsWith("cw:")) return;
-  handle(message).then(data => sendResponse({ ok: true, data })).catch(error =>
+  handle(message, sender).then(data => sendResponse({ ok: true, data })).catch(error =>
     sendResponse({ ok: false, error: { status: Number(error?.status) || 503, message: String(error?.message || "Coursewise request failed.").slice(0, 240) } }));
   return true;
 });

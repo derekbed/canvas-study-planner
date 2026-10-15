@@ -267,8 +267,43 @@ body.cw-canvas-themed:not(.cw-canvas-dark) #footer a { color: var(--cw-canvas-li
 body.cw-canvas-themed #breadcrumbs {
   background: var(--cw-canvas-background) !important;
 }
+body.cw-canvas-themed :is(.ic-app-nav-toggle-and-crumbs, #content .student-assignment-overview, #right-side h2) {
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed :is(#content, #right-side) :is(hr, [role="separator"]:not(.cw-rail-resize-handle)) {
+  background-color: var(--cw-canvas-border) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
 body.cw-canvas-themed #content .submission-details-container {
   border-color: var(--cw-canvas-border) !important;
+}
+/* New Quizzes renders its own white header and assessment card inside Canvas. */
+body.cw-canvas-themed :is([aria-label="Quiz header"], [aria-label="Quiz content"], [aria-label="Assessment results page"], [aria-label="Assessment instructions page"]) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed :is([aria-label="Quiz header"], [aria-label="Quiz content"]) > :is(div, section, article, header) {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+/* The results card is nested below several transparent SDK wrappers. Anchor to
+   its stable title marker rather than Canvas's generated CSS class names. */
+body.cw-canvas-themed [aria-label="Quiz content"] div:has([data-automation="sdk-result-list-title"]) {
+  background-color: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed [aria-label="Quiz content"] :is(div, hr, [role="separator"]) {
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed [aria-label="Quiz content"] :is(h1, h2, h3, h4, h5, h6, p, strong) {
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed [aria-label="Quiz content"] :is(button, [role="button"]):not([aria-label="Skip To Quiz Content"]) {
+  background-color: var(--cw-nav-background) !important;
+  border-color: var(--cw-canvas-border) !important;
+  color: var(--cw-nav-ink) !important;
 }
 body.cw-canvas-themed #content .submission-details-comments :is(.comments, [style*="background-color: #fff"]) {
   background-color: var(--cw-canvas-background) !important;
@@ -422,6 +457,23 @@ body.cw-canvas-themed :is(#calendar-app, #minical, .mini_calendar, .mini-calenda
 }
 body.cw-canvas-themed .fc .fc-day.fc-today { background-color: color-mix(in srgb, var(--cw-nav-background) 25%, var(--cw-canvas-surface)) !important; }
 body.cw-canvas-themed .fc :is(.fc-day-number, .fc-day-header, .fc-toolbar h2) { color: var(--cw-surface-ink) !important; }
+/* Canvas uses several event variants; style their shared FullCalendar element. */
+body.cw-canvas-themed .fc .fc-event {
+  background: var(--cw-calendar-event-surface) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-top-color: var(--cw-calendar-event-edge) !important;
+  border-right-color: var(--cw-calendar-event-edge) !important;
+  border-bottom-color: var(--cw-calendar-event-edge) !important;
+  border-left-width: 3px !important;
+  border-radius: 5px;
+  box-shadow: none !important;
+}
+body.cw-canvas-themed .fc .fc-event :is(.fc-content, .fc-time, .fc-title, i) {
+  color: inherit !important;
+}
+body.cw-canvas-themed .fc .fc-event .calendar__event--completed {
+  color: var(--cw-canvas-muted) !important;
+}
 body.cw-canvas-themed :is(#minical, #calendar-list-holder) {
   color: var(--cw-surface-ink) !important;
 }

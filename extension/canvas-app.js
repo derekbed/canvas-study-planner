@@ -4,7 +4,7 @@
   const model = globalThis.CoursewiseInsightsModel;
   const palette = globalThis.CoursewiseCanvasPalette;
   const state = { active: false, tab: "today", courseId: "all", category: "all", comingUpCollapsed: false, pageHistory: [], workspace: null, preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", ...palette.cachedPreferences() },
-    live: { courses: [], work: [], announcements: [], calendar: [], errors: [] }, loading: false, busy: false,
+    live: { courses: [], work: [], announcements: [], calendar: [], errors: [] }, loading: false, connecting: false, loadGeneration: 0, busy: false,
     chatCourse: "", chatId: "", chats: [], chatMessages: [], chatLoading: false, chatMore: false, chatGeneration: 0, chatRetry: null, chatPending: null, chatError: "", session: null, pairCode: "", question: "", includePage: false, selected: new Set(), sourceTouched: false, answer: null,
     message: "", extensionDisconnected: false, knowledge: new Map(), knowledgeDrafts: new Map(), dismissedAnnouncements: new Set(), page: {}, host: null, shell: null, hidden: null, activePath: "", previousFocus: null };
   const tabs = [["today", "Today"], ["courses", "Courses"], ["materials", "Materials"], ["knowledge", "Knowledge"], ["ask", "Ask"]];
@@ -57,7 +57,17 @@
     if (item) return item;
     const menu = globalMenu(); if (!menu) return null;
     item = el("li", undefined, "ic-app-header__menu-list-item cw-nav-item"); item.id = "cw-canvas-nav-item";
-    const control = button("", activate, "cw-nav-control");
+    const control = el("button", undefined, "cw-nav-control");
+    control.type = "button";
+    const openWorkspace = event => {
+      // Canvas delegates pointer and click events from its global navigation.
+      // Handle both during capture so Canvas does not discard activation.
+      event.preventDefault();
+      event.stopPropagation();
+      activate();
+    };
+    control.addEventListener("pointerdown", openWorkspace, true);
+    control.addEventListener("click", openWorkspace, true);
     control.setAttribute("aria-label", "Open Coursewise workspace");
     control.append(el("span", "◈", "cw-nav-icon"), el("span", "Coursewise", "cw-nav-label"));
     control.addEventListener("keydown", event => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); activate(); } });
@@ -149,6 +159,7 @@
   }
   function deactivate() {
     if (!state.active) return;
+    state.loadGeneration += 1;
     const { host, hidden, shell } = state;
     shell?.remove();
     if (host && hidden) { while (hidden.firstChild) host.append(hidden.firstChild); hidden.remove(); }
@@ -214,17 +225,37 @@
     return live;
   }
   async function loadAll() {
-    state.loading = true; state.message = "Loading Canvas and Coursewise…"; render();
-    const [workspace, live, session] = await Promise.allSettled([broker("getWorkspace"), loadLive(), broker("getSession")]);
+    const generation = ++state.loadGeneration;
+    state.loading = true; state.connecting = true; state.message = "Loading Canvas courses…"; render();
+    loadLive().then(result => {
+      if (generation !== state.loadGeneration) return;
+      state.live = result;
+      state.loading = false;
+      if (state.message === "Loading Canvas courses…") state.message = "";
+      if (state.active) {
+        render();
+        if (state.session?.paired && state.tab === "knowledge") loadKnowledge();
+      }
+    }).catch(() => {
+      if (generation !== state.loadGeneration) return;
+      state.loading = false;
+      state.live.errors.push("Canvas course data is unavailable. Refresh to try again.");
+      if (state.message === "Loading Canvas courses…") state.message = "";
+      if (state.active) render();
+    });
+    broker("getPreferences").then(preferences => {
+      if (generation !== state.loadGeneration) return;
+      state.preferences = preferences; applyCanvasTheme();
+    }).catch(() => {});
+    const [workspace, session] = await Promise.allSettled([broker("getWorkspace"), broker("getSession")]);
+    if (generation !== state.loadGeneration) return;
     if (workspace.status === "fulfilled") { state.workspace = workspace.value; applyCanvasBranding(); }
-    else { state.workspace = null; state.message = workspace.reason.message; }
-    if (live.status === "fulfilled") state.live = live.value;
-    if (session.status === "fulfilled") state.session = session.value;
-    try { state.preferences = await broker("getPreferences"); applyCanvasTheme(); } catch { /* workspace remains usable */ }
-    state.loading = false;
-    if (workspace.status === "fulfilled") state.message = "";
+    else { state.workspace = null; state.message = workspace.reason?.message || "Coursewise is unavailable."; }
+    state.session = session.status === "fulfilled" ? session.value : { paired: false };
+    state.connecting = false;
+    if (workspace.status === "fulfilled" && !state.loading) state.message = "";
     if (state.active) render();
-    if (state.active && state.tab === "knowledge") await loadKnowledge();
+    if (state.active && state.session?.paired && !state.loading && state.tab === "knowledge") await loadKnowledge();
   }
   function savedCourse(live) {
     const courses = state.workspace?.courses || [];
@@ -788,7 +819,7 @@
     const content = el("main", undefined, "cw-content");
     if (state.message && !(state.loading && !state.session)) { const message = el("p", state.message, "cw-status"); message.setAttribute("role", "status"); content.append(message); }
     if (state.extensionDisconnected) content.append(button("Refresh Canvas", () => location.reload(), "cw-primary"));
-    if (state.loading && !state.session) {
+    if (state.connecting && !state.session) {
       const waiting = el("section", undefined, "cw-panel");
       waiting.setAttribute("role", "status");
       append(waiting, el("h2", "Connecting to Coursewise…"), el("p", "Loading your Canvas workspace and session."));

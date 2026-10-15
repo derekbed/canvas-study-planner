@@ -1,6 +1,7 @@
 import { bucket, database, now } from "@/lib/server";
 import { extensionError, extensionResponse, extensionUser, fromExtension, preflight } from "@/lib/extension";
 import { extractMaterialText } from "@/lib/material-text";
+import { validStudyFile } from "@/lib/upload-validation";
 
 export const OPTIONS = preflight;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
     file = new File([bytes], raw.name, { type: raw.type });
   } catch { return extensionError(request, "File could not be read. Select it again.", 400); }
+  if (!await validStudyFile(file, MAX_BYTES)) return extensionError(request, "Upload a valid PDF, TXT, or Markdown file.", 400);
   const db = database();
   if (!await db.prepare("SELECT id FROM courses WHERE id=? AND user_id=?").bind(courseId, user).first())
     return extensionError(request, "Course not found in your Coursewise workspace.", 403);

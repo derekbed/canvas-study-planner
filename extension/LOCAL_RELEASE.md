@@ -2,6 +2,8 @@
 
 The local build is version **0.1.4**. It provides Canvas appearance, dashboard course cards, grades, deadlines, course health, announcements, and read-state organization. It has no Coursewise website, account pairing, chat, AI requests, uploaded materials, or backend. Canvas data is fetched through the student's signed-in Canvas browser session and used on the page. Appearance choices, connected domains, course names and pictures, and read-state IDs are saved in Chrome local storage.
 
+The extension checks `docs/extension-version.json` from this repository at startup and hourly. Set `minimumVersion` to the oldest compatible installed version and `latestVersion` to the newest release. If the installed version is below the minimum, the side panel asks users to update, Canvas messages are blocked, and future Canvas script injections are disabled. The last valid policy is cached for offline use. Publish the policy file before raising the minimum; builds released before this check cannot be blocked remotely. Store installs normally update through Chrome, while unpacked installs must be reloaded manually.
+
 The selected background and light/dark mode are also cached in Canvas site storage so subsequent page loads can apply the same theme before extension storage responds. The first visit after this update initializes that cache.
 
 ## Build and try it

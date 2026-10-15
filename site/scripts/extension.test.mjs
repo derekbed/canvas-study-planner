@@ -46,6 +46,15 @@ test("request limits reject oversized fields and private feed URLs", () => {
   assert.equal(validation.validateStudyBody(JSON.stringify({ question: "x", canvasContext: { url: "https://canvas.upenn.edu/feeds/calendars/secret.ics" } })), null);
   assert.equal(validation.validateStudyBody(JSON.stringify({ question: "x", canvasContext: { pageTitle: "safe" } })).canvasContext.pageTitle, "safe");
 });
+test("study uploads reject mismatched types and disguised files", async () => {
+  const { validStudyFile } = load("lib/upload-validation.ts");
+  const file = (body, name, type) => new File([body], name, { type });
+  assert.equal(await validStudyFile(file("%PDF-1.7\n", "notes.pdf", "application/pdf"), 1024), true);
+  assert.equal(await validStudyFile(file("<html>not a PDF", "notes.pdf", "application/pdf"), 1024), false);
+  assert.equal(await validStudyFile(file("hello", "notes.pdf", "text/plain"), 1024), false);
+  assert.equal(await validStudyFile(file("hello", "../notes.txt", "text/plain"), 1024), false);
+  assert.equal(await validStudyFile(file("hello\0secret", "notes.txt", "text/plain"), 1024), false);
+});
 test("hosted extension endpoints require an explicitly configured HTTPS origin", async () => {
   const hosted = new Request("https://study.example.edu/api/extension/pair/start", {
     method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: "{}"
@@ -74,6 +83,21 @@ test("public workspace data requires explicit 13+ confirmation", async () => {
     assert.deepEqual(await (await eligibility.GET(get())).json(), { required: true, accepted: true });
     assert.equal((await workspaceRoute.GET(new Request("https://study.example.edu/api/workspace", { headers }))).status, 200);
   } finally { delete env.COURSEWISE_PUBLIC_ORIGIN; }
+});
+test("account writes reject cross-site and missing Origin headers", async () => {
+  const account = "csrf-student";
+  const body = JSON.stringify({ action: "course:create", name: "Injected course" });
+  for (const extra of [{}, { Origin: "https://attacker.example" }, { Origin: "http://localhost:5173", "Sec-Fetch-Site": "cross-site" }]) {
+    const response = await workspaceRoute.POST(new Request("http://localhost:5173/api/workspace", {
+      method: "POST", headers: { "Content-Type": "application/json", "oai-authenticated-user-id": account, ...extra }, body
+    }));
+    assert.notEqual(response.status, 200);
+  }
+  assert.equal(sql.prepare("SELECT count(*) AS count FROM courses WHERE user_id=?").get(account).count, 0);
+  const allowed = await workspaceRoute.POST(new Request("http://localhost:5173/api/workspace", {
+    method: "POST", headers: { "Content-Type": "application/json", "oai-authenticated-user-id": account, Origin: "http://localhost:5173" }, body
+  }));
+  assert.equal(allowed.status, 200);
 });
 test("pairing requires signed-in confirmation and tokens expire or revoke", async () => {
   const started = await start.POST(request("/api/extension/pair/start")), { code } = await started.json();

@@ -1,4 +1,4 @@
-import { ageGateRequired, authenticatedUserId, database, jsonError } from "@/lib/server";
+import { ageGateRequired, authenticatedUserId, database, jsonError, sameOriginMutation } from "@/lib/server";
 
 export async function GET(request: Request) {
   const user = authenticatedUserId(request);
@@ -12,6 +12,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!sameOriginMutation(request)) return jsonError("Open Coursewise to confirm eligibility.", 403);
   const user = authenticatedUserId(request);
   if (!user) return jsonError("Sign in first.", 401);
   const origin = request.headers.get("origin");

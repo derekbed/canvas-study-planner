@@ -193,7 +193,7 @@ export default function CoursewiseApp() {
         </>}
       </Tabs>
       {data && <details className="focus-drawer"><summary>Focus timer</summary><FocusTimer data={data} onMutate={mutate}/></details>}
-      <footer className="site-footer"><a href="/privacy-policy">Privacy notice</a><a href="/accessibility">Accessibility</a></footer>
+      <footer className="site-footer"><a href="/privacy-policy">Privacy notice</a><a href="/accessibility">Accessibility</a><a href="/copyright">Copyright reports</a></footer>
     </div>
 
     <Sheet open={Boolean(selectedEvent)} onOpenChange={open => !open && setSelectedEventId(null)}>

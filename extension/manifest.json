@@ -4,11 +4,11 @@
   "version": "0.1.4",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAj4pPfT9ztWywwRInr/FwLNWM90JOUyLRo/+OGI+NmrKKxhNNPmSari3AABnTfWH2cakA2LJ5AJ5ary7RF7TSOaJwyV+wMIDccZOYuM+/HEgn1wB30jSIl+UqD8q0Ab2LrN2dOOCZLmqkPM4u/td3kyl4t9OuiIzBZNrDrOW3YTonfn9a74ToIskoby4/KMNYZKcIfH8uSIqUAElQt5zv2S8Trkd4T9rhub9wS1nN2LsqRXbar4WMhWEZUXAK0hEZ4iTBDfb+4mYx5S9FYdDCGd2QtRukAlDPzXzJiJ/nj+KsVZ5DYe4ib4j0YnG+UViLsvEcyYeOr+m02oqSXi8RkQIDAQAB",
   "description": "See Canvas course grades and deadlines, and ask your local Coursewise workspace.",
-  "icons": { "16": "icon16.png", "32": "icon32.png", "48": "icon48.png", "128": "icon128.png" },
+  "icons": { "16": "ai-icons/icon16.png", "32": "ai-icons/icon32.png", "48": "ai-icons/icon48.png", "128": "ai-icons/icon128.png" },
   "permissions": ["sidePanel", "tabs", "storage"],
   "host_permissions": ["https://canvas.upenn.edu/*", "http://localhost:5173/*"],
   "background": { "service_worker": "background.js" },
-  "action": { "default_title": "Open Coursewise", "default_icon": { "16": "icon16.png", "32": "icon32.png" } },
+  "action": { "default_title": "Open Coursewise AI", "default_icon": { "16": "ai-icons/icon16.png", "32": "ai-icons/icon32.png" } },
   "side_panel": { "default_path": "sidepanel.html" },
   "content_scripts": [
     { "matches": ["https://canvas.upenn.edu/*"], "js": ["palette.js", "theme-bootstrap.js"], "css": ["theme-bootstrap.css", "appearance.css"], "run_at": "document_start" },

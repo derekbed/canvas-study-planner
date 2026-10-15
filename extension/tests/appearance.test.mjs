@@ -18,7 +18,7 @@ function harness(initial = {}) {
       async set(value) { Object.assign(data, structuredClone(value)); },
       async remove(keys) { keys.forEach(key => delete data[key]); }
     } }
-  }, Date });
+  }, Date, URL });
   return (patch, type = 'cw:setPreferences') => new Promise(resolve => listener({ type, ...patch }, { tab: {}, url: 'https://canvas.upenn.edu/' }, resolve));
 }
 test('unpaired appearance changes persist and retain Match system', async () => {
@@ -60,4 +60,13 @@ test('data requests are blocked before disclosure consent', async () => {
   const result = await send({}, 'cw:getPreferences');
   assert.equal(result.ok, false);
   assert.equal(result.error.status, 403);
+});
+test('course pictures save locally without pairing and are scoped to Canvas', async () => {
+  const send = harness();
+  const imageUrl = 'data:image/jpeg;base64,/9j/2Q==';
+  assert.equal((await send({ canvasId: '123', imageUrl }, 'cw:styleLocalCoursePicture')).ok, true);
+  assert.equal((await send({}, 'cw:getLocalCoursePictures')).data['123'], imageUrl);
+  assert.equal((await send({ canvasId: '123', imageUrl: 'https://example.com/picture' }, 'cw:styleLocalCoursePicture')).ok, false);
+  assert.equal((await send({ canvasId: '123', imageUrl: '' }, 'cw:styleLocalCoursePicture')).ok, true);
+  assert.equal((await send({}, 'cw:getLocalCoursePictures')).data['123'], undefined);
 });

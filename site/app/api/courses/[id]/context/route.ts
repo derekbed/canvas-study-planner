@@ -9,5 +9,5 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const row = await knowledgeFor(user, id);
   const facts = parseFacts(row?.facts_json || "[]");
   return Response.json({ brief: row ? briefFor(course, facts) : "", facts, gaps: gapsFor(facts), status: row?.status || "empty",
-    sourceMaterialId: row?.source_material_id || null, updatedAt: row?.updated_at || null });
+    sourceMaterialId: row?.source_material_id || null, updatedAt: row?.updated_at || null }, { headers: { "Cache-Control": "private, no-store" } });
 }
