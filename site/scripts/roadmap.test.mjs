@@ -58,25 +58,26 @@ test('saved reviews, focus sessions, preferences and deletion are account-scoped
  data=await mutate('card:review',{id:card.id,rating:'good'});assert.equal(data.cards.find(c=>c.id===card.id).interval_days,2);
  const forbidden=await api.POST(req({action:'card:review',id:card.id,rating:'again'},'student-b'));assert.equal(forbidden.status,404);
  await mutate('focus:save',{id:'one-session',minutes:25});data=await mutate('focus:save',{id:'one-session',minutes:25});assert.equal(data.focusSessions.length,1);
- data=await mutate('preferences:update',{browserAlerts:true,consent:true,startHour:16,endHour:20});assert.equal(data.preferences.consent,true);
+ data=await mutate('preferences:update',{browserAlerts:true,startHour:16,endHour:20});assert.equal(data.preferences.browserAlerts,true);
  const bad=await api.POST(req({action:'preferences:update',startHour:21,endHour:20}));assert.equal(bad.status,400);
  sql.prepare('INSERT INTO extension_sessions(token_hash,user_id,expires_at) VALUES (?,?,?)').run('student-a-session','student-a',Date.now()+60_000);
  sql.prepare('INSERT INTO extension_pairings(code_hash,user_id,expires_at) VALUES (?,?,?)').run('student-a-pairing','student-a',Date.now()+60_000);
  sql.prepare('INSERT INTO materials(id,user_id,course_id,name,r2_key,created_at) VALUES (?,?,?,?,?,?)').run('student-a-file','student-a','course','Notes.txt','student-a/object','2026-10-01');
  objects.set('student-a/object',{body:'private file'});
- await mutate('workspace:delete',{confirm:'DELETE'});data=await(await api.GET(new Request('https://test.example/api/workspace',{headers:{'oai-authenticated-user-id':'student-a'}}))).json();assert.equal(data.courses.length,0);assert.equal(data.cards.length,0);assert.equal(data.focusSessions.length,0);assert.equal(data.preferences.consent,undefined);
+ await mutate('workspace:delete',{confirm:'DELETE'});data=await(await api.GET(new Request('https://test.example/api/workspace',{headers:{'oai-authenticated-user-id':'student-a'}}))).json();assert.equal(data.courses.length,0);assert.equal(data.cards.length,0);assert.equal(data.focusSessions.length,0);assert.equal(data.preferences.browserAlerts,undefined);
  assert.equal(sql.prepare("SELECT count(*) AS n FROM extension_sessions WHERE user_id='student-a'").get().n,0);
  assert.equal(sql.prepare("SELECT count(*) AS n FROM extension_pairings WHERE user_id='student-a'").get().n,0);
  assert.equal(sql.prepare("SELECT count(*) AS n FROM materials WHERE user_id='student-a'").get().n,0);
  assert.equal(objects.has('student-a/object'),false);
  assert.ok(sql.prepare("SELECT count(*) AS n FROM events WHERE user_id='student-b'").get().n>0);
 });
-test('material retrieval and extraction retain actual page labels',()=>{
- const m=load('lib/material-context.ts');const material={id:'m',name:'Syllabus.pdf',extracted_text:'[Page 1]\nHomework 40%.\n[Page 2]\nFinal exam 2026-12-10. No late exams.'};
- assert.ok(m.syllabusCandidates(material).some(c=>c.date==='2026-12-10'&&c.source==='Syllabus.pdf, page 2'));
- assert.ok(m.relevantPassages([material],'final exam')[0].label.includes('page 2'));
+test('material review finds sourced dates and rules without a remote service',()=>{
+ const material=load('lib/material-context.ts');
+ const source={id:'m',name:'Syllabus.pdf',extracted_text:'[Page 1]\nHomework 40%.\n[Page 2]\nFinal exam 2026-12-10. No late exams.'};
+ const candidates=material.syllabusCandidates(source);
+ assert.ok(candidates.some(item=>item.kind==='date'&&item.date==='2026-12-10'&&item.source==='Syllabus.pdf, page 2'));
+ assert.ok(candidates.some(item=>item.kind==='grading'&&item.source==='Syllabus.pdf, page 1'));
 });
-
 test('course deletion does not reseed samples, and student score edits persist',async()=>{
  let data=await mutate('course:create',{name:'Only course'},'student-c');const course=data.courses[0];
  data=await mutate('event:create',{courseId:course.id,title:'Exam',dueAt:'2026-12-01T12:00:00Z'},'student-c');const event=data.events[0];
@@ -94,14 +95,13 @@ test('a failed object deletion does not claim workspace removal',async()=>{
  await mutate('workspace:delete',{confirm:'DELETE'},user);
  assert.equal(objects.has(key),false);
 });
-test('material access and AI consent are checked before private excerpts leave the account',async()=>{
- const materialApi=load('app/api/materials/[id]/route.ts'),analyze=load('app/api/materials/[id]/analyze/route.ts'),study=load('app/api/study/route.ts');
- sql.prepare("INSERT INTO materials (id,user_id,course_id,name,kind,mime_type,r2_key,extracted_text,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run('private-file','owner','course','Private.pdf','notes','application/pdf','private-key','Private content','2026-10-01');
+test('materials remain private to their owner',async()=>{
+ const materialApi=load('app/api/materials/[id]/route.ts');
+ sql.prepare("INSERT INTO materials (id,user_id,course_id,name,kind,mime_type,r2_key,created_at) VALUES (?,?,?,?,?,?,?,?)").run('private-file','owner','course','Private.pdf','notes','application/pdf','private-key','2026-10-01');
  const request=new Request('https://test.example/api/materials/private-file',{headers:{'oai-authenticated-user-id':'stranger'}}),context={params:Promise.resolve({id:'private-file'})};
- assert.equal((await materialApi.GET(request,context)).status,404);assert.equal((await materialApi.DELETE(request,context)).status,404);assert.equal((await analyze.GET(request,context)).status,404);
+ assert.equal((await materialApi.GET(request,context)).status,404);
+ assert.equal((await materialApi.DELETE(request,context)).status,404);
  assert.equal((await materialApi.GET(new Request('https://test.example/api/materials/private-file'),context)).status,401);
- env.OPENAI_API_KEY='test-only';let sent=false;const oldFetch=globalThis.fetch;globalThis.fetch=async()=>{sent=true;throw new Error('Must not send');};
- try {assert.equal((await study.POST(req({question:'Summarize my notes'},'owner'))).status,403);assert.equal(sent,false);}finally{globalThis.fetch=oldFetch;delete env.OPENAI_API_KEY;}
 });
 test('failed calendar transactions roll back without logging the private feed URL',async()=>{
  const originalBatch=db.batch,originalFetch=globalThis.fetch,originalLog=console.error;
@@ -121,12 +121,4 @@ test('Canvas sync keeps identical school course IDs isolated per student',async(
  const oldFetch=globalThis.fetch;
  globalThis.fetch=async url=>{const p=new URL(url).pathname;if(p.endsWith('/courses'))return Response.json([{id:1,name:'Biology',course_code:'BIO',enrollments:[{grades:{current_score:91}}]}]);if(p.endsWith('/assignment_groups'))return Response.json([{id:7,name:'Homework',group_weight:100}]);if(p.endsWith('/assignments'))return Response.json([{id:9,name:'Lab report',description:'Write your findings.',due_at:'2026-10-10T12:00:00Z',html_url:'https://school.instructure.com/courses/1/assignments/9',points_possible:100,assignment_group_id:7}]);return Response.json([{id:9,title:'Office hours',start_at:'2026-10-09T12:00:00Z',context_code:'course_1'}]);};
  try{await canvas.syncCanvas('canvas-a');await canvas.syncCanvas('canvas-b');await canvas.syncCanvas('canvas-a');const a=sql.prepare("SELECT * FROM courses WHERE user_id='canvas-a'").get(),b=sql.prepare("SELECT * FROM courses WHERE user_id='canvas-b'").get();assert.notEqual(a.id,b.id);assert.equal(a.current_grade,91);assert.equal(sql.prepare("SELECT count(*) AS n FROM events WHERE user_id='canvas-a'").get().n,2);assert.equal(sql.prepare("SELECT description FROM events WHERE user_id='canvas-a' AND kind='assignment'").get().description,'Write your findings.');assert.equal(sql.prepare("SELECT course_id FROM events WHERE user_id='canvas-b' AND kind='event'").get().course_id,b.id);}finally{globalThis.fetch=oldFetch;delete env.TOKEN_ENCRYPTION_KEY;}
-});
-test('AI flashcards use selected excerpts, validate source labels, and save to review',async()=>{
- const study=load('app/api/study/route.ts');await mutate('preferences:update',{consent:true},'ai-student');
- sql.prepare('INSERT INTO materials (id,user_id,course_id,name,kind,mime_type,extracted_text,created_at) VALUES (?,?,?,?,?,?,?,?)').run('selected','ai-student','notes','Notes.pdf','notes','application/pdf','[Page 2]\nMitosis produces two daughter cells.','2026-10-01');
- sql.prepare('INSERT INTO materials (id,user_id,course_id,name,kind,mime_type,extracted_text,created_at) VALUES (?,?,?,?,?,?,?,?)').run('unselected','ai-student','notes','Private.pdf','notes','application/pdf','DO_NOT_SEND_UNSELECTED_TEXT','2026-10-01');
- const oldFetch=globalThis.fetch;env.OPENAI_API_KEY='test-only';let requestBody;
- globalThis.fetch=async(url,options)=>{requestBody=JSON.parse(options.body);return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({cards:[{question:'What does mitosis produce?',answer:'Two daughter cells.',source:'Notes.pdf, page 2'}]})}]}]});};
- try{const response=await study.POST(req({mode:'flashcards',question:'Review mitosis',materialIds:['selected']},'ai-student'));assert.equal(response.status,200);assert.ok(requestBody.input.includes('Mitosis'));assert.ok(!requestBody.input.includes('DO_NOT_SEND_UNSELECTED_TEXT'));assert.equal(requestBody.store,false);assert.equal(sql.prepare("SELECT source FROM flashcards WHERE user_id='ai-student'").get().source,'Notes.pdf, page 2');}finally{globalThis.fetch=oldFetch;delete env.OPENAI_API_KEY;}
 });

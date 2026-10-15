@@ -11,9 +11,9 @@
     requested: new Set(), errors: new Map(), loading: false, generation: 0,
     active: "assignment", expanded: new Set(),
     read: new Set(), showRead: false, lastHidden: null, storageError: false,
-    preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, ...palette.cachedPreferences() }, workspace: null, railWidth: 320, railCollapsed: false, courseExpanded: false, horizontalView: false, horizontalCardHeight: 160, cardScale: 100
+    preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, ...palette.cachedPreferences() }, workspace: null, localCoursePictures: {}, railWidth: 320, railCollapsed: false, courseExpanded: false, horizontalView: false, horizontalCardHeight: 160, cardScale: 100
   };
-  const READ_KEY = "cwReadAssignmentsV1";
+  const READ_KEY = "cwReadAssignmentsV1:" + location.origin;
   const RAIL_WIDTH_KEY = "cwRailWidthV2";
   const HORIZONTAL_CARD_HEIGHT_KEY = "cwHorizontalCardHeightV1";
   const CARD_SCALE_KEY = "cwCardScaleV1";
@@ -217,15 +217,16 @@
     return backdrop;
   }
   function coursePicturePanel(courseId) {
-    const course = state.workspace?.courses?.find(item => String(item.id) === String(courseId));
-    if (!course) return null;
+    const saved = savedCourse(courseId);
+    const card = dashboardCards().find(item => item.id === String(courseId))?.card;
+    const course = saved || state.courses.get(String(courseId)) || { name: card?.querySelector("h2")?.textContent?.trim() || "Canvas course" };
     const { backdrop, box } = settingsDialog(`${course.name} picture`, "cw-course-picture-title", "Close course picture settings");
     const details = node("div", undefined, "cw-appearance-course-controls");
     let pendingImageUrl = null, pendingFileName = "";
     const status = node("p", "", "cw-appearance-status"); status.setAttribute("role", "status");
     const renderPicture = () => {
       details.replaceChildren();
-      const previewUrl = pendingImageUrl === null ? course.image_url : pendingImageUrl;
+      const previewUrl = pendingImageUrl === null ? coursePicture(courseId) : pendingImageUrl;
       const upload = node("input"); upload.type = "file"; upload.accept = globalThis.CoursewiseCourseImage.accept; upload.setAttribute("aria-label", `Choose picture for ${course.name}`);
       const uploadLabel = node("label", "Choose course picture", "cw-appearance-upload"); uploadLabel.append(upload); details.append(uploadLabel);
       if (previewUrl) { const preview = node("img", undefined, "cw-appearance-preview"); preview.src = previewUrl; preview.alt = `${course.name} picture preview`; details.append(preview); }
@@ -236,12 +237,18 @@
         const controls = [...box.querySelectorAll("input,button:not(.cw-appearance-close)")]; controls.forEach(control => { control.disabled = true; });
         status.textContent = "Saving…";
         try {
-          const color = ["blue", "lavender", "peach", "mint", "butter", "rose", "sky", "teal", "violet", "orange"].includes(course.color) ? course.color : "blue";
-          const saved = await broker("styleCourse", { courseId: course.id, color, imageUrl: pendingImageUrl });
-          Object.assign(course, { color: saved.color, image_url: saved.imageUrl });
-          const current = state.workspace?.courses?.find(item => item.id === course.id);
-          if (current) Object.assign(current, { color: saved.color, image_url: saved.imageUrl });
-          pendingImageUrl = null; pendingFileName = ""; render(); renderPicture(); status.textContent = "Saved.";
+          if (saved) {
+            const color = ["blue", "lavender", "peach", "mint", "butter", "rose", "sky", "teal", "violet", "orange"].includes(saved.color) ? saved.color : "blue";
+            const updated = await broker("styleCourse", { courseId: saved.id, color, imageUrl: pendingImageUrl });
+            saved.image_url = updated.imageUrl;
+            delete state.localCoursePictures[String(courseId)];
+            broker("styleLocalCoursePicture", { canvasId: courseId, imageUrl: "" }).catch(() => {});
+          } else {
+            await broker("styleLocalCoursePicture", { canvasId: courseId, imageUrl: pendingImageUrl });
+            if (pendingImageUrl) state.localCoursePictures[String(courseId)] = pendingImageUrl;
+            else delete state.localCoursePictures[String(courseId)];
+          }
+          pendingImageUrl = null; pendingFileName = ""; render(); renderPicture(); status.textContent = saved ? "Saved to Coursewise." : "Saved in this browser.";
         } catch (error) { status.textContent = error.message; }
         finally { controls.forEach(control => { control.disabled = false; }); if (backdrop.isConnected) upload.focus(); }
       });
@@ -677,7 +684,7 @@
     tab.addEventListener("click", event => { if (dragged) { event.preventDefault(); dragged = false; return; } onClick(); });
   }
   function railHandle() {
-    const handle = node("div", undefined, "cw-rail-resize-handle"); handle.setAttribute("role", "separator"); handle.setAttribute("aria-label", "Resize Coursewise organizer"); handle.title = "Drag or use arrow keys to resize";
+    const handle = node("div", undefined, "cw-rail-resize-handle"); handle.setAttribute("role", "separator"); handle.setAttribute("aria-label", "Resize Coursewise organizer");
     handle.tabIndex = 0;
     handle.setAttribute("aria-orientation", "vertical");
     handle.setAttribute("aria-valuemin", String(MIN_RAIL_WIDTH));
@@ -763,6 +770,9 @@
   function savedCourse(id) {
     return state.workspace?.courses?.find(course => String(course.canvas_id) === String(id));
   }
+  function coursePicture(id) {
+    return savedCourse(id)?.image_url || state.localCoursePictures[String(id)] || "";
+  }
   function paintCoursePicture(card, imageUrl) {
     const hero = card.querySelector(".ic-DashboardCard__header_hero");
     const host = card.querySelector(".ic-DashboardCard__header_image") || hero;
@@ -841,6 +851,8 @@
       }
       const ids = visibleIds(current);
       for (const id of ids) if (!state.courses.has(id)) state.courses.set(id, placeholder(id));
+      await broker("syncCourses", { courses: [...state.courses.values()].map(course => ({ canvasId: course.id, name: course.name })) }).catch(() => {});
+      state.workspace = await broker("getWorkspace").catch(() => state.workspace);
       render();
       for (let offset = 0; offset < ids.length; offset += 3) {
         await Promise.all(ids.slice(offset, offset + 3).map(id => loadCourseData(id, generation, false)));
@@ -897,7 +909,7 @@
   }
   function renderCards() {
     for (const { id, card } of dashboardCards()) {
-      paintCoursePicture(card, savedCourse(id)?.image_url || "");
+      paintCoursePicture(card, coursePicture(id));
       const loadedCourse = state.courses.get(id);
       const course = loadedCourse || placeholder(id);
       const hero = card.querySelector('.ic-DashboardCard__header_hero, .ic-DashboardCard__header, .DashboardCard__header, .course-card__header') || card;
@@ -1033,7 +1045,7 @@
       const remaining = assignments.length - reviewed;
       const percent = assignments.length ? Math.round(reviewed / assignments.length * 100) : 0;
       const summary = node("div", undefined, "cw-hub__course-summary");
-      const imageUrl = savedCourse(current.id)?.image_url;
+      const imageUrl = coursePicture(current.id);
       if (imageUrl) {
         const picture = node("img", undefined, "cw-hub__course-picture");
         picture.src = imageUrl; picture.alt = "";
@@ -1155,7 +1167,7 @@
     if (failures) panel.append(node("p", "Canvas could not load this space for " + failures + " course" + (failures === 1 ? "" : "s") + ". You can still use Canvas directly.", "cw-hub__warning"));
     if (state.storageError && active.key === "assignment") panel.append(node("p", "Read choices could not be saved. They may reset when Chrome reloads.", "cw-hub__warning"));
     hub.append(panel);
-    hub.append(node("p", "Canvas stays unchanged when you mark an item as read. Nothing here is sent to Coursewise or OpenAI when you browse.", "cw-hub__privacy"));
+    hub.append(node("p", "Canvas stays unchanged when you mark an item as read. Coursewise keeps your choices in this browser.", "cw-hub__privacy"));
     if (current.type === "course") {
       const details = node("div", undefined, "cw-hub__course-details");
       details.id = "cw-hub-course-details";
@@ -1170,7 +1182,6 @@
     document.body.classList.toggle("cw-organizer-active", current?.type === "dashboard" && hasSummary);
   }
   function renderHub() {
-    if (document.body.classList.contains("cw-canvas-app-active")) return;
     const current = route();
     if (!current) return;
     document.body.classList.toggle("cw-organizer-dashboard", current.type === "dashboard");
@@ -1202,11 +1213,6 @@
     renderHub();
   }
   function onRoute() {
-    if (document.body.classList.contains("cw-canvas-app-active")) {
-      document.querySelector(".cw-rail-collapse")?.remove();
-      document.querySelector(".cw-rail-reopen")?.remove();
-      return;
-    }
     addHorizontalViewMenuItem();
     addCoursewiseAppearanceMenuItem();
     addCoursePictureMenuItem();
@@ -1223,7 +1229,7 @@
         if (!state.railCollapsed && document.querySelector(".cw-hub--rail") && !document.querySelector(".cw-rail-collapse")) showCollapseTab();
         if (dashboardCards().some(({ id, card }) =>
           (state.courses.has(id) && showCardGrades() !== Boolean(card.querySelector(".cw-card-grade"))) ||
-          Boolean(savedCourse(id)?.image_url) !== Boolean(card.querySelector(".cw-custom-course-picture")))) renderCards();
+          Boolean(coursePicture(id)) !== Boolean(card.querySelector(".cw-custom-course-picture")))) renderCards();
         for (const id of visibleIds(current)) {
           if (state.courses.has(id) && !state.requested.has(id) && state.requested.size < 30) loadCourseData(id, state.generation);
         }
@@ -1272,6 +1278,9 @@
       if (changes.cwLocalSchools || changes.cwCourseAppearanceUpdated) {
         broker("getWorkspace").then(workspace => { state.workspace = workspace; render(); }).catch(() => {});
       }
+      if (changes.cwCanvasCoursePictures) {
+        broker("getLocalCoursePictures").then(pictures => { state.localCoursePictures = pictures; render(); }).catch(() => {});
+      }
       if (Number.isFinite(changes[HORIZONTAL_CARD_HEIGHT_KEY]?.newValue)) updateHorizontalCardHeight(changes[HORIZONTAL_CARD_HEIGHT_KEY].newValue);
       if (Number.isFinite(changes[CARD_SCALE_KEY]?.newValue)) updateCardScale(changes[CARD_SCALE_KEY].newValue);
       if (changes[READ_KEY]) {
@@ -1298,9 +1307,9 @@
       state.preferences = preferences; applyBackground(); syncAppearanceModeControls(); renderCards();
     }).catch(() => {});
     broker("getWorkspace").then(workspace => { state.workspace = workspace; render(); }).catch(() => {});
+    broker("getLocalCoursePictures").then(pictures => { state.localCoursePictures = pictures; render(); }).catch(() => {});
     routeReady = true;
     window.addEventListener("popstate", onRoute);
-    window.addEventListener("cw-coursewise-visibility", () => { onRoute(); if (!document.body.classList.contains("cw-canvas-app-active")) renderHub(); });
     window.addEventListener("resize", applyRailSize);
     onRoute();
   }

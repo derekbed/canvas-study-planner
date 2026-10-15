@@ -1,32 +1,20 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Coursewise</title><link rel="stylesheet" href="sidepanel.css"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Coursewise</title><link rel="stylesheet" href="sidepanel.css"></head>
 <body><main>
-  <header><div><p class="eyebrow">Canvas bridge · local prototype</p><h1>Coursewise</h1></div><a href="http://localhost:5173/" id="workspace" target="_blank" rel="noopener">Full workspace ↗</a></header>
+  <header><div><p class="eyebrow">Canvas companion</p><h1>Coursewise</h1></div></header>
   <section id="disclosure" aria-labelledby="disclosure-heading">
-    <h2 id="disclosure-heading">Before you use Coursewise on Canvas</h2>
-    <p>Coursewise reads courses, grades, assignments, announcements, and visible page text from your signed-in Canvas account to show study tools. It stores appearance settings and read-item IDs in this browser. If you pair your Coursewise account, you can upload course files and save chats there. Page text and questions are sent to Coursewise and OpenAI only when you submit a question or request AI analysis.</p>
-    <p><a href="http://localhost:5173/privacy-policy" target="_blank" rel="noopener">Read the privacy notice</a> before continuing.</p>
+    <h2 id="disclosure-heading">Before you use Coursewise</h2>
+    <p>After you connect a school, Coursewise reads courses, grades, assignments, and announcements from your signed-in Canvas account to show appearance controls and study summaries. Coursewise saves appearance choices, course names and pictures, and IDs of items you mark as read in this browser. It does not send this data to a Coursewise server.</p>
+    <p>Coursewise does not change your Canvas submissions or grades. <a href="privacy.html" target="_blank" rel="noopener">Read the privacy notice</a>.</p>
     <label><input id="data-consent" type="checkbox"> I am at least 13 and agree to this data use.</label>
     <button id="continue" type="button" disabled>Continue</button>
   </section>
-  <div id="extension-content" hidden>
-  <section aria-labelledby="context-heading">
-    <div class="row"><h2 id="context-heading">Canvas context</h2><span id="freshness" class="status">Not captured</span></div>
-    <p id="course" class="course">Open a Canvas course page to begin.</p>
-    <p id="context-message" role="status"></p>
-    <div class="actions"><button id="refresh" type="button">Refresh Canvas context</button><button id="clear" type="button" class="quiet">Clear context</button></div>
-    <details id="preview"><summary>Exact page text to send</summary><dl id="fields"></dl></details>
+  <section id="ready" hidden aria-labelledby="ready-heading">
+    <h2 id="ready-heading" tabindex="-1">Connect your school's Canvas</h2>
+    <p>Enter the HTTPS address of the Canvas site where you sign in. Chrome will ask for access to that site only.</p>
+    <form id="school-form"><label for="school-url">Canvas address</label><input id="school-url" type="url" required placeholder="https://canvas.example.edu" autocomplete="url"><button id="connect" type="submit">Connect Canvas</button></form>
+    <p id="school-status" role="status" aria-live="polite"></p>
+    <h3>Connected schools</h3><ul id="schools"></ul>
+    <p>After connecting, reload your Canvas dashboard. Use its three-dot menu for <strong>Coursewise appearance</strong>.</p>
   </section>
-  <section aria-labelledby="ask-heading"><h2 id="ask-heading">Ask Coursewise</h2>
-    <p class="note">Coursewise is an AI study tool, not a person or crisis service. When you submit, the text shown above and your question go to local Coursewise and may be sent to OpenAI. Nothing is sent on page navigation or refresh.</p>
-    <button id="new-chat" type="button" class="quiet">New conversation</button><div id="chat-history" aria-label="Conversation"></div>
-    <form id="ask-form"><label for="question">Your question</label><textarea id="question" rows="4" maxlength="2000" placeholder="What should I review before this assignment?"></textarea>
-    <button id="submit" type="submit">Ask Coursewise</button></form>
-    <p id="request-status" role="status" aria-live="polite"></p>
-  </section>
-  <section aria-labelledby="pair-heading"><h2 id="pair-heading">Local session</h2><p id="pair-status" role="status">Checking pairing…</p>
-    <div class="actions"><button id="pair" type="button">Pair with Coursewise</button><button id="finish" type="button" hidden>Finish pairing</button><button id="signout" type="button" class="quiet" hidden>Sign out</button></div>
-  </section>
-  </div>
-</main><script src="chat-format.js"></script><script src="sidepanel.js"></script></body></html>
+</main><script src="sidepanel.js"></script></body></html>

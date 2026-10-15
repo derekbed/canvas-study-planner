@@ -35,13 +35,13 @@ test("local release supports user-granted school origins without website or AI c
 });
 
 test("schools register separately and a disconnected school loses access and settings", async () => {
-  const code = readFileSync(new URL("../local/background.js", import.meta.url), "utf8");
+  const code = readFileSync(new URL("../background.js", import.meta.url), "utf8");
   const storage = { cwDataConsent: true };
   const granted = new Set(["https://one.example.edu/*", "https://two.example.edu/*"]);
   const scripts = new Map();
   let listener, removedListener;
   const chrome = {
-    runtime: { id: "local-extension", onMessage: { addListener(fn) { listener = fn; } } },
+    runtime: { id: "local-extension", getManifest() { return { version: "0.1.4" }; }, onMessage: { addListener(fn) { listener = fn; } } },
     sidePanel: { setPanelBehavior() {} },
     storage: { local: {
       async get(keys) { return Object.fromEntries((Array.isArray(keys) ? keys : [keys]).map(key => [key, structuredClone(storage[key])])); },
@@ -58,7 +58,8 @@ test("schools register separately and a disconnected school loses access and set
       async unregisterContentScripts({ ids }) { ids.forEach(id => scripts.delete(id)); }
     }
   };
-  vm.runInNewContext(code, { chrome, URL, btoa, console, Promise });
+  vm.runInNewContext(code, { chrome, URL, btoa, console, Promise, AbortController, setTimeout, clearTimeout,
+    fetch: async () => ({ ok: true, json: async () => ({ minimumVersion: "0.1.4", latestVersion: "0.1.4", updateUrl: "https://example.com/update" }) }) });
   const send = (message, url) => new Promise(resolve => listener(message,
     url ? { id: chrome.runtime.id, tab: {}, url } : { id: chrome.runtime.id }, resolve));
   const oldKey = btoa("https://one.example.edu").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");

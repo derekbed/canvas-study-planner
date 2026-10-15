@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
+globalThis.location = { origin: "https://canvas.upenn.edu" };
 const { calculate, WEIGHTS } = require("../course-health.js");
 const fixture = JSON.parse(fs.readFileSync(new URL("../fixtures/course-health.json", import.meta.url), "utf8"));
 const base = { courseId: fixture.courseId, announcements: [], grade: { score: null },

@@ -7,7 +7,7 @@ export async function extraAction(user:string, action:string, body:Record<string
     const row=await db.prepare("SELECT value FROM preferences WHERE user_id=?").bind(user).first<{value:string}>();
     const old=JSON.parse(row?.value || "{}");
     const next={...old,initialized:true};
-    for(const key of ["browserAlerts","consent"]) if(typeof body[key]==="boolean") next[key]=body[key];
+    for(const key of ["browserAlerts"]) if(typeof body[key]==="boolean") next[key]=body[key];
     for(const [key,min,max] of [["startHour",0,23],["endHour",1,24],["sessionMinutes",15,90]] as const) if(body[key]!=null) next[key]=numberIn(body[key],min,max,min);
     if((next.endHour??21)<=(next.startHour??17))return jsonError("Study end time must be after start time.");
     await db.prepare("INSERT INTO preferences (user_id,value) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET value=excluded.value").bind(user,JSON.stringify(next)).run();
@@ -40,6 +40,7 @@ export async function extraAction(user:string, action:string, body:Record<string
     if(action==="course:delete" && !await db.prepare("SELECT id FROM courses WHERE user_id=? AND id=?").bind(user,id).first())return jsonError("Course not found.",404);
     const files=(await db.prepare("SELECT r2_key FROM materials WHERE user_id=? AND (?='' OR course_id=?)").bind(user,selected,selected).all<{r2_key:string}>()).results;
     for(const file of files)if(file.r2_key)await bucket().delete(file.r2_key);
+    // Retired preview tables still exist in deployed databases and must be cleared on deletion.
     const statements=["materials","events","study_blocks","flashcards","focus_sessions","grade_history","chat_messages","chat_conversations","material_vectors","course_passages","course_knowledge"].map(table=>db.prepare(`DELETE FROM ${table} WHERE user_id=? AND (?='' OR course_id=?)`).bind(user,selected,selected));
     statements.push(db.prepare("DELETE FROM courses WHERE user_id=? AND (?='' OR id=?)").bind(user,selected,selected));
     if(!selected) for(const table of ["settings","calendar_imports","canvas_connections","extension_sessions","extension_pairings"])statements.push(db.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(user));

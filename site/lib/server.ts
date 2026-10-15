@@ -102,5 +102,5 @@ export async function workspace(user: string) {
     db.prepare("SELECT * FROM focus_sessions WHERE user_id=? ORDER BY completed_at DESC").bind(user).all(),
     db.prepare("SELECT course_id,grade,recorded_at FROM grade_history WHERE user_id=? ORDER BY recorded_at").bind(user).all(),
   ]);
-  return { preferences: JSON.parse(prefs?.value || "{}"), calendarImport, cards:cards.results, focusSessions:focusSessions.results, gradeHistory:gradeHistory.results, courses: courses.results, events: events.results, materials: materials.results, blocks: blocks.results, settings, connection, aiAvailable: Boolean(setting("OPENAI_API_KEY")), canvasAvailable: Boolean(setting("CANVAS_BASE_URL") && setting("CANVAS_CLIENT_ID") && setting("CANVAS_CLIENT_SECRET") && setting("TOKEN_ENCRYPTION_KEY")) };
+  return { preferences: JSON.parse(prefs?.value || "{}"), calendarImport, cards:cards.results, focusSessions:focusSessions.results, gradeHistory:gradeHistory.results, courses: courses.results, events: events.results, materials: materials.results, blocks: blocks.results, settings, connection, canvasAvailable: Boolean(setting("CANVAS_BASE_URL") && setting("CANVAS_CLIENT_ID") && setting("CANVAS_CLIENT_SECRET") && setting("TOKEN_ENCRYPTION_KEY")) };
 }

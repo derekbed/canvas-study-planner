@@ -188,8 +188,9 @@ body.cw-organizer-dashboard:not(.cw-organizer-collapsed) #right-side-wrapper{pad
 @media(prefers-reduced-motion:reduce){.cw-hub__space{transition:none}}
 
 /* Dashboard rail: keep Canvas course cards in the first viewport. */
-.cw-hub--rail{position:relative;width:100%!important;max-width:100%!important;margin:0 0 20px;border-radius:16px;box-shadow:0 9px 25px #0f304014;overflow:visible}.cw-hub--rail .cw-rail-resize-handle{position:absolute;z-index:10;left:-12px;top:0;bottom:0;width:16px;cursor:ew-resize;touch-action:none}
-.cw-hub--rail .cw-rail-resize-handle:focus-visible{outline:3px solid #edaa42;outline-offset:2px}
+.cw-hub--rail{position:relative;width:100%!important;max-width:100%!important;margin:0 0 20px;border-radius:16px;box-shadow:0 9px 25px #0f304014;overflow:visible}.cw-hub--rail .cw-rail-resize-handle{position:absolute;z-index:10;left:-12px;top:0;bottom:0;width:16px;cursor:ew-resize;touch-action:none;background:transparent!important;border:0!important;box-shadow:none!important;outline:none!important}
+.cw-hub--rail .cw-rail-resize-handle::after{content:"";position:absolute;left:50%;top:50%;width:3px;height:32px;transform:translate(-50%,-50%);border-radius:999px;background:var(--cw-canvas-border,#82939b);opacity:0;transition:opacity .15s ease}
+.cw-hub--rail .cw-rail-resize-handle:is(:hover,:focus-visible)::after{opacity:.7}
 .cw-rail-collapse,.cw-rail-reopen{box-sizing:border-box;width:25px;height:52px;padding:0;background:#fff;font-size:24px;line-height:1;cursor:pointer}
 .cw-rail-collapse{position:absolute;top:50%;transform:translateY(-50%);z-index:11;left:-25px;border:1px solid #cbdde3;border-right:0;border-radius:9px 0 0 9px;color:#245769;box-shadow:-4px 4px 15px #0f304026}
 .cw-rail-reopen{position:fixed;top:45vh;z-index:99999;right:0;border:1px solid #cbdde3;border-right:0;border-radius:9px 0 0 9px;color:#245769;box-shadow:0 4px 15px #0f304026}

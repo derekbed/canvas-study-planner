@@ -1,133 +1,56 @@
 "use strict";
-const API = "http://localhost:5173";
-const labels = { url: "Canvas URL", pageTitle: "Page title", courseName: "Course name", courseCode: "Course code", assignmentTitle: "Assignment title", dueText: "Due date", pointsText: "Points", instructions: "Visible instructions" };
 const $ = id => document.getElementById(id);
-let conversationId = null, conversationKey = "", chatRetry = null;
-let context = null, capturedTab = null, stale = false, busy = false, token = null, expiresAt = 0, pairCode = null, expiryTimer = null;
-async function api(path, payload, bearer = token) {
-  const response = await fetch(API + path, { method: "POST", headers: { "Content-Type": "application/json", ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}) }, body: JSON.stringify(payload) });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) { const error = new Error(data.error || `Coursewise returned ${response.status}.`); error.status = response.status; throw error; }
-  return data;
+const disclosure = $("disclosure"), ready = $("ready"), consent = $("data-consent"), next = $("continue");
+function show(accepted) { disclosure.hidden = accepted; ready.hidden = !accepted; if (accepted) loadSchools(); }
+async function ask(type, origin) {
+  const response = await chrome.runtime.sendMessage({ type, origin });
+  if (!response?.ok) throw new Error(response?.error?.message || "Coursewise could not update this school.");
+  return response.data;
 }
-function renderContext(message = "") {
-  const status = $("freshness");
-  status.textContent = context ? stale ? "Stale · refresh" : "Fresh" : "Not captured";
-  status.className = `status ${context ? stale ? "stale" : "fresh" : ""}`;
-  $("course").textContent = context?.courseName || context?.courseCode || "No Canvas course captured";
-  $("context-message").textContent = message || (stale ? "The active Canvas page changed. Refresh before asking." : context ? "Review the exact fields below before submitting." : "Open a Canvas course or assignment page, then refresh.");
-  $("fields").replaceChildren();
-  if (context) for (const [key, label] of Object.entries(labels)) if (context[key]) {
-    const dt = document.createElement("dt"), dd = document.createElement("dd");
-    dt.textContent = label; dd.textContent = context[key]; $("fields").append(dt, dd);
+function renderSchools(origins) {
+  $("schools").replaceChildren();
+  if (!origins.length) { const row = document.createElement("li"); row.textContent = "No schools connected yet."; $("schools").append(row); return; }
+  for (const origin of origins) {
+    const row = document.createElement("li"), label = document.createElement("span"), remove = document.createElement("button");
+    label.textContent = origin + " "; remove.type = "button"; remove.textContent = "Disconnect"; remove.className = "quiet";
+    remove.setAttribute("aria-label", `Disconnect ${origin}`);
+    remove.addEventListener("click", async () => {
+      remove.disabled = true;
+      try { renderSchools((await ask("cw:removeSchool", origin)).origins); $("school-status").textContent = `${origin} disconnected and its local course settings deleted. Reload open Canvas tabs.`; }
+      catch (error) { $("school-status").textContent = error.message; remove.disabled = false; }
+    });
+    row.append(label, remove); $("schools").append(row);
   }
-  $("preview").hidden = !context;
-  $("clear").disabled = !context;
-  $("submit").disabled = busy || stale;
 }
-function renderPair(message = "") {
-  const paired = Boolean(token && expiresAt > Date.now());
-  $("pair-status").textContent = message || (paired ? `Paired until ${new Date(expiresAt).toLocaleTimeString()}.` : pairCode ? "Confirm in the Coursewise tab, then finish pairing." : "Pair to ask about saved Coursewise materials.");
-  $("pair").hidden = paired || Boolean(pairCode);
-  $("finish").hidden = !pairCode;
-  $("signout").hidden = !paired;
+async function loadSchools() {
+  try { renderSchools((await ask("cw:listSchools")).origins); }
+  catch (error) { $("school-status").textContent = error.message; }
 }
-async function forgetToken() { if (expiryTimer) clearTimeout(expiryTimer); expiryTimer = null; token = null; expiresAt = 0; await chrome.storage.session.remove(["extensionToken", "expiresAt"]); renderPair("Session expired or signed out. Pair again."); }
-function scheduleExpiry() {
-  if (expiryTimer) clearTimeout(expiryTimer);
-  if (token) expiryTimer = setTimeout(forgetToken, Math.max(0, expiresAt - Date.now()));
-}
-async function currentTab() { const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }); return tab; }
-async function refresh() {
-  $("refresh").disabled = true;
-  try {
-    const tab = await currentTab();
-    if (!tab?.id || !/^https:\/\/canvas\.upenn\.edu\//.test(tab.url || "")) {
-      context = null; capturedTab = null; stale = false; renderContext("No Canvas context detected. Open a course or assignment on canvas.upenn.edu."); return;
-    }
-    const result = await chrome.tabs.sendMessage(tab.id, { type: "COURSEWISE_EXTRACT" });
-    const stillActive = await currentTab();
-    if (stillActive?.id !== tab.id || stillActive.url !== tab.url) {
-      context = null; capturedTab = null; stale = false; renderContext("Canvas changed while refreshing. Refresh again."); return;
-    }
-    context = result?.supported ? result.context : null;
-    capturedTab = context ? { id: tab.id, url: tab.url } : null;
-    stale = false;
-    renderContext(context ? "Review the exact fields below before submitting." : result?.message || "No Canvas context detected on this page.");
-  } catch { context = null; capturedTab = null; stale = false; renderContext("Could not read this Canvas page. Reload it, then refresh context."); }
-  finally { $("refresh").disabled = false; }
-}
-$("refresh").addEventListener("click", refresh);
-$("data-consent").addEventListener("change", event => { $("continue").disabled = !event.target.checked; });
-$("continue").addEventListener("click", async () => {
-  if (!$("data-consent").checked) return;
+consent.addEventListener("change", () => { next.disabled = !consent.checked; });
+next.addEventListener("click", async () => {
+  if (!consent.checked) return;
   await chrome.storage.local.set({ cwDataConsent: true });
-  $("disclosure").hidden = true;
-  $("extension-content").hidden = false;
-  await refresh();
+  show(true);
+  $("ready-heading").focus();
 });
-$("clear").addEventListener("click", () => { context = null; capturedTab = null; stale = false; renderContext("Captured context cleared. Your question is still here."); });
-$("pair").addEventListener("click", async () => {
-  $("pair").disabled = true;
-  try {
-    const data = await api("/api/extension/pair/start", {});
-    pairCode = data.code;
-    await chrome.tabs.create({ url: `${API}/extension/pair?code=${encodeURIComponent(pairCode)}` });
-    renderPair();
-  } catch (error) { renderPair(`Could not start pairing: ${error.message} Check that Coursewise is running at ${API}.`); }
-  finally { $("pair").disabled = false; }
-});
-$("finish").addEventListener("click", async () => {
-  $("finish").disabled = true;
-  try {
-    const data = await api("/api/extension/pair/complete", { code: pairCode });
-    token = data.token; expiresAt = data.expiresAt; pairCode = null;
-    await chrome.storage.session.set({ extensionToken: token, expiresAt });
-    scheduleExpiry();
-    renderPair("Paired. You can ask Coursewise now.");
-  } catch (error) { if (error.status === 403) pairCode = null; renderPair(error.message); }
-  finally { $("finish").disabled = false; }
-});
-$("signout").addEventListener("click", async () => {
-  const old = token; await forgetToken();
-  if (old) try { await api("/api/extension/session", {}, old); } catch { /* local token already cleared */ }
-});
-$("new-chat").addEventListener("click", () => { if (busy) return; conversationId = null; chatRetry = null; $("chat-history").replaceChildren(); });
-$("ask-form").addEventListener("submit", async event => {
+$("school-form").addEventListener("submit", async event => {
   event.preventDefault();
-  if (busy) return;
-  const question = $("question").value.trim();
-  if (!question) { $("request-status").textContent = "Enter a question first."; $("question").focus(); return; }
-  if (!token || expiresAt <= Date.now()) { await forgetToken(); $("request-status").textContent = "Pair the extension before asking."; return; }
-  const tab = await currentTab();
-  if (capturedTab && (tab?.id !== capturedTab.id || tab.url !== capturedTab.url)) { stale = true; renderContext(); $("request-status").textContent = "Canvas changed. Refresh context before submitting."; return; }
-  busy = true; $("request-status").textContent = "Asking Coursewise…"; renderContext();
+  const input = $("school-url"), button = $("connect");
+  let origin;
   try {
-    const key = context?.url?.match(/\/courses\/(\d+)/)?.[1] || context?.courseCode || context?.courseName || "page";
-    if (key !== conversationKey) { conversationKey = key; conversationId = null; chatRetry = null; $("chat-history").replaceChildren(); }
-    if (chatRetry?.question !== question) chatRetry = { question, id: crypto.randomUUID() };
-    const data = await api("/api/extension/study", { question, canvasContext: context || {}, conversationId, requestId: chatRetry.id });
-    conversationId = data.conversationId; chatRetry = null;
-    const turn = document.createElement("article"), heading = document.createElement("strong"), reply = CoursewiseChatFormat.render(data.answer);
-    heading.textContent = question; turn.append(heading, reply);
-    const sources = document.createElement("details"), summary = document.createElement("summary"); summary.textContent = "Sources supplied"; sources.append(summary);
-    for (const source of data.sources || []) { const line = document.createElement("p"); line.textContent = source; sources.append(line); } turn.append(sources); $("chat-history").append(turn);
-    $("question").value = ""; $("question").placeholder = "Ask a follow-up…";
-    $("request-status").textContent = "Saved to your Coursewise conversations.";
-  } catch (error) {
-    if (error.status === 401) await forgetToken();
-    $("request-status").textContent = error.message + (error.status ? "" : ` Check that Coursewise is running at ${API}.`);
-  } finally { busy = false; renderContext(); }
+    const url = new URL(input.value.trim());
+    if (url.protocol !== "https:" || url.username || url.password || url.port) throw new Error();
+    origin = url.origin;
+  } catch { $("school-status").textContent = "Enter your school's HTTPS Canvas address."; return; }
+  button.disabled = true; $("school-status").textContent = "Requesting access to this Canvas site…";
+  try {
+    // Request the exact school origin while this submit gesture is active.
+    const granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
+    if (!granted) { $("school-status").textContent = "Access was not granted. Coursewise did not connect this school."; return; }
+    renderSchools((await ask("cw:addSchool", origin)).origins);
+    input.value = "";
+    $("school-status").textContent = `${origin} connected. Reload its Canvas tabs to show Coursewise.`;
+  } catch (error) { $("school-status").textContent = error.message; }
+  finally { button.disabled = false; }
 });
-chrome.tabs.onActivated.addListener(() => { if (context) { stale = true; renderContext(); } });
-chrome.tabs.onUpdated.addListener((tabId, change) => { if (context && capturedTab?.id === tabId && (change.url || change.status === "loading")) { stale = true; renderContext(); } });
-(async () => {
-  const consent = await chrome.storage.local.get("cwDataConsent");
-  if (consent.cwDataConsent !== true) { $("disclosure").hidden = false; $("extension-content").hidden = true; return; }
-  $("disclosure").hidden = true;
-  $("extension-content").hidden = false;
-  const saved = await chrome.storage.session.get(["extensionToken", "expiresAt"]);
-  token = saved.extensionToken || null; expiresAt = saved.expiresAt || 0;
-  if (token && expiresAt <= Date.now()) await forgetToken(); else { renderPair(); scheduleExpiry(); }
-  await refresh();
-})();
+chrome.storage.local.get("cwDataConsent").then(data => show(data.cwDataConsent === true));

@@ -2,7 +2,7 @@
   "use strict";
   if (window === window.top) return;
   window.addEventListener("message", event => {
-    if (event.origin !== "https://canvas.upenn.edu" || event.source !== window.parent) return;
+    if (event.origin !== location.ancestorOrigins?.[0] || event.source !== window.parent) return;
     const theme = event.data;
     if (theme?.type !== "cw:preview-theme" || !theme.tokens || typeof theme.tokens !== "object") return;
     for (const [name, value] of Object.entries(theme.tokens)) {

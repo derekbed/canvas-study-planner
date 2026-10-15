@@ -70,8 +70,12 @@
   const themedPreviews = new WeakSet();
   function themeEmbeddedFrames(force = false) {
     if (!previewTheme) return;
-    document.querySelectorAll("#preview_frame, iframe.tox-edit-area__iframe").forEach(frame => {
-      const send = () => frame.contentWindow?.postMessage(previewTheme, "*");
+    document.querySelectorAll("iframe").forEach(frame => {
+      const source = frame.getAttribute("src") || "about:blank";
+      let url;
+      try { url = new URL(source, location.href); } catch { return; }
+      if (url.origin !== location.origin && url.protocol !== "about:") return;
+      const send = () => frame.contentWindow?.postMessage(previewTheme, location.origin);
       if (!themedPreviews.has(frame)) {
         themedPreviews.add(frame);
         frame.addEventListener("load", send);
@@ -135,6 +139,7 @@
     const card = dark ? surface : blend(page, nav, 0.35);
     const navHover = blend(nav, [0, 0, 0], 0.15);
     const pageText = readableColors(page);
+    const eventSurface = dark ? blend(page, nav, 0.55) : blend(page, luminance(rgb(pageText.ink)) < 0.2 ? [255, 255, 255] : [0, 0, 0], 0.08);
     const navText = readableColors(nav);
     const surfaceText = readableColors(surface);
     const cardText = readableColors(card);
@@ -144,6 +149,8 @@
       "--cw-canvas-ink": pageText.ink,
       "--cw-canvas-muted": pageText.muted,
       "--cw-canvas-link": pageText.link,
+      "--cw-calendar-event-surface": hex(eventSurface),
+      "--cw-calendar-event-edge": hex(blend(eventSurface, rgb(pageText.ink), 0.18)),
       "--cw-surface-ink": surfaceText.ink,
       "--cw-surface-muted": surfaceText.muted,
       "--cw-surface-link": surfaceText.link,

@@ -14,13 +14,13 @@ This branch contains the current Coursewise for Canvas dashboard customization w
 - The native course-card `Move` tab is relabeled `More`.
 - `More` keeps Canvas' move and favorite actions and includes **Course picture**.
 - Native course popouts and Coursewise menus inherit the active Canvas light, dark, or system theme.
-- The obsolete local prototype extension remains disabled; the active extension is **Coursewise for Canvas**.
+- The active extension is **Coursewise for Canvas**.
 
 ## Important implementation notes
 
 - `extension/insights.js` handles dashboard card controls, course-picture persistence, popout menu enhancement, and card scaling.
 - `extension/appearance.css` contains Canvas theme styling for Coursewise UI and Canvas' native tabbed course popout.
-- `extension/local/background.js` registers content scripts for user-connected Canvas origins in the local build.
+- `extension/background.js` registers content scripts for user-connected Canvas origins in the local build.
 - `extension/scripts/build-local-release.mjs` stages the school-independent local package in `extension/local-release`.
 - The local package intentionally uses dynamic content-script registration after a Canvas origin is connected; it does not include a static `content_scripts` block in its generated manifest.
 

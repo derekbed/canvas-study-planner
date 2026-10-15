@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
+globalThis.location = { origin: "https://canvas.upenn.edu" };
 const model = require("../insights-model.js");
 const fixture = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "../fixtures/insights.json"), "utf8"));
 

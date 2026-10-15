@@ -8,7 +8,9 @@ function harness(initial = {}) {
   let listener;
   vm.runInNewContext(source, { chrome: {
     sidePanel: { setPanelBehavior() {} },
-    runtime: { onMessage: { addListener(fn) { listener = fn; } } },
+    runtime: { id: "local-extension", onMessage: { addListener(fn) { listener = fn; } } },
+    permissions: { async contains() { return true; }, onRemoved: { addListener() {} } },
+    scripting: { async getRegisteredContentScripts() { return []; }, async registerContentScripts() {}, async unregisterContentScripts() {} },
     storage: { session: {
       async get() { return structuredClone(data); },
       async set(value) { Object.assign(data, structuredClone(value)); },
@@ -18,8 +20,8 @@ function harness(initial = {}) {
       async set(value) { Object.assign(data, structuredClone(value)); },
       async remove(keys) { keys.forEach(key => delete data[key]); }
     } }
-  }, Date });
-  return (patch, type = 'cw:setPreferences') => new Promise(resolve => listener({ type, ...patch }, { tab: {}, url: 'https://canvas.upenn.edu/' }, resolve));
+  }, Date, URL, btoa });
+  return (patch, type = 'cw:setPreferences') => new Promise(resolve => listener({ type, ...patch }, { id: 'local-extension', tab: {}, url: 'https://canvas.upenn.edu/' }, resolve));
 }
 test('unpaired appearance changes persist and retain Match system', async () => {
   const send = harness({cwCanvasPreferences:{canvasBackground:'#10273d',canvasThemeMode:'system'}});
@@ -59,5 +61,5 @@ test('data requests are blocked before disclosure consent', async () => {
   const send = harness({ cwDataConsent: false });
   const result = await send({}, 'cw:getPreferences');
   assert.equal(result.ok, false);
-  assert.equal(result.error.status, 403);
+  assert.match(result.error.message, /disclosure/);
 });

@@ -15,13 +15,12 @@ import CalendarView from "@/components/views/calendar-view";
 import CoursesView from "@/components/views/courses-view";
 import GradesView from "@/components/views/grades-view";
 import PlanView from "@/components/views/plan-view";
-import ChatView from "@/components/views/chat-view";
 import DashboardView from "@/components/views/dashboard-view";
 import ReviewView from "@/components/views/review-view";
 import PrivacyView from "@/components/views/privacy-view";
 import FocusTimer from "@/components/focus-timer";
 
-const tabs = ["dashboard", "calendar", "courses", "plan", "grades", "chat", "review", "privacy"] as const;
+const tabs = ["dashboard", "calendar", "courses", "plan", "grades", "review", "privacy"] as const;
 type Tab = typeof tabs[number];
 type Page = { tab: Tab; courseId: string };
 
@@ -174,11 +173,11 @@ export default function CoursewiseApp() {
     </header>
     <div className="workspace">
       <div className="page-heading">
-        <div><p className="eyebrow">YOUR WORKSPACE</p><h1>{activeTab === "dashboard" ? "Your next step, made clear." : activeTab === "review" ? "Keep what you learn." : activeTab === "privacy" ? "Your data, your choice." : activeTab === "calendar" ? "Stay ahead of your week." : activeTab === "courses" ? "Your courses." : activeTab === "plan" ? "Make a plan that fits." : activeTab === "grades" ? "Know where you stand." : "Study with your coursework."}</h1><p className="heading-copy">{activeTab === "dashboard" ? "Priorities and progress from your coursework." : activeTab === "review" ? "Review saved cards when they need another look." : activeTab === "privacy" ? "Manage consent, exports, and deletion." : activeTab === "calendar" ? "Your dates, assignments, and study time in one place." : activeTab === "courses" ? "Keep assignments and course materials together." : activeTab === "plan" ? "Turn deadlines into focused study blocks." : activeTab === "grades" ? "Explore targets and see which work matters most." : "Ask questions, build flashcards, and practice."}</p></div>
+        <div><p className="eyebrow">YOUR WORKSPACE</p><h1>{activeTab === "dashboard" ? "Your next step, made clear." : activeTab === "review" ? "Keep what you learn." : activeTab === "privacy" ? "Your data, your choice." : activeTab === "calendar" ? "Stay ahead of your week." : activeTab === "courses" ? "Your courses." : activeTab === "plan" ? "Make a plan that fits." : activeTab === "grades" ? "Know where you stand." : "Your workspace."}</h1><p className="heading-copy">{activeTab === "dashboard" ? "Priorities and progress from your coursework." : activeTab === "review" ? "Review saved cards when they need another look." : activeTab === "privacy" ? "Manage exports and deletion." : activeTab === "calendar" ? "Your dates, assignments, and study time in one place." : activeTab === "courses" ? "Keep assignments and course materials together." : activeTab === "plan" ? "Turn deadlines into focused study blocks." : activeTab === "grades" ? "Explore targets and see which work matters most." : "Manage your workspace."}</p></div>
         <div className="heading-actions">{data?.connection && <Button variant="outline" onClick={sync} disabled={busy}><RefreshCw size={16} /> Sync</Button>}<Button className="connect-button" onClick={() => data?.canvasAvailable ? window.location.assign("/api/canvas/start") : setConnectDialog(true)}><Link2 size={17} /> {data?.connection ? "Reconnect Canvas" : "Connect Canvas"}</Button></div>
       </div>
       <Tabs value={activeTab} onValueChange={value => navigateTo(value as Tab)} className="main-tabs">
-        <TabsList variant="line" className="main-tabs-list">{tabs.map(tab => <TabsTrigger value={tab} key={tab}>{tab === "privacy" ? "Data & privacy" : tab === "dashboard" ? "Today" : tab === "plan" ? "Study plan" : tab === "chat" ? "AI study chat" : tab[0].toUpperCase() + tab.slice(1)}</TabsTrigger>)}</TabsList>
+        <TabsList variant="line" className="main-tabs-list">{tabs.map(tab => <TabsTrigger value={tab} key={tab}>{tab === "privacy" ? "Data & privacy" : tab === "dashboard" ? "Today" : tab === "plan" ? "Study plan" : tab[0].toUpperCase() + tab.slice(1)}</TabsTrigger>)}</TabsList>
         {loading && <div className="loading-state"><Loader2 className="animate-spin" size={25} /> Loading your workspace…</div>}
         {!loading && !data && <div className="error-state"><h2>Workspace unavailable</h2><p>Please reload this page to try again.</p><Button onClick={() => { setLoading(true); reload().catch(error=>toast.error(error.message)).finally(() => setLoading(false)); }}>Retry</Button></div>}
         {data && <>
@@ -189,7 +188,6 @@ export default function CoursewiseApp() {
           <TabsContent value="courses"><CoursesView data={data} selectedCourseId={selectedCourseId} onSelectCourse={id => navigateTo("courses", id)} onEvent={setSelectedEventId} onNewCourse={() => setCourseDialog(true)} onNewEvent={() => setEventDialog(true)} onRefresh={reload} onMutate={mutate} /></TabsContent>
           <TabsContent value="plan"><PlanView data={data} onEvent={setSelectedEventId} onMutate={mutate} /></TabsContent>
           <TabsContent value="grades"><GradesView data={data} onEvent={setSelectedEventId} onMutate={mutate} /></TabsContent>
-          <TabsContent value="chat"><ChatView data={data} onRefresh={reload} /></TabsContent>
         </>}
       </Tabs>
       {data && <details className="focus-drawer"><summary>Focus timer</summary><FocusTimer data={data} onMutate={mutate}/></details>}

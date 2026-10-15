@@ -1,18 +1,35 @@
 {
   "manifest_version": 3,
-  "name": "Coursewise Canvas Bridge (Local Prototype)",
+  "name": "Coursewise for Canvas",
   "version": "0.1.4",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAj4pPfT9ztWywwRInr/FwLNWM90JOUyLRo/+OGI+NmrKKxhNNPmSari3AABnTfWH2cakA2LJ5AJ5ary7RF7TSOaJwyV+wMIDccZOYuM+/HEgn1wB30jSIl+UqD8q0Ab2LrN2dOOCZLmqkPM4u/td3kyl4t9OuiIzBZNrDrOW3YTonfn9a74ToIskoby4/KMNYZKcIfH8uSIqUAElQt5zv2S8Trkd4T9rhub9wS1nN2LsqRXbar4WMhWEZUXAK0hEZ4iTBDfb+4mYx5S9FYdDCGd2QtRukAlDPzXzJiJ/nj+KsVZ5DYe4ib4j0YnG+UViLsvEcyYeOr+m02oqSXi8RkQIDAQAB",
-  "description": "See Canvas course grades and deadlines, and ask your local Coursewise workspace.",
-  "icons": { "16": "icon16.png", "32": "icon32.png", "48": "icon48.png", "128": "icon128.png" },
-  "permissions": ["sidePanel", "tabs", "storage"],
-  "host_permissions": ["https://canvas.upenn.edu/*", "http://localhost:5173/*"],
-  "background": { "service_worker": "background.js" },
-  "action": { "default_title": "Open Coursewise", "default_icon": { "16": "icon16.png", "32": "icon32.png" } },
-  "side_panel": { "default_path": "sidepanel.html" },
-  "content_scripts": [
-    { "matches": ["https://canvas.upenn.edu/*"], "js": ["palette.js", "theme-bootstrap.js"], "css": ["theme-bootstrap.css", "appearance.css"], "run_at": "document_start" },
-    { "matches": ["https://canvas.upenn.edu/*"], "js": ["content.js", "insights-model.js", "course-health.js", "vendor/libheif-without-unsafe-eval.js", "course-image.js", "insights.js", "chat-format.js", "canvas-app.js"], "css": ["insights.css", "canvas-app.css"], "run_at": "document_idle" },
-    { "matches": ["https://canvas.upenn.edu/*"], "all_frames": true, "match_about_blank": true, "js": ["appearance-frame.js"], "css": ["appearance-frame.css"], "run_at": "document_idle" }
+  "description": "Customize Canvas and view local course deadlines, grades, and announcements.",
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Coursewise",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "minimum_chrome_version": "119",
+  "optional_host_permissions": [
+    "https://*/*"
   ]
 }

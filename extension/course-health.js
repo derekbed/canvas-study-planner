@@ -9,7 +9,7 @@
   const safeLink = (value, id) => {
     try {
       const url = new URL(value);
-      return url.origin === "https://canvas.upenn.edu" && url.pathname.startsWith(`/courses/${id}/`) &&
+      return url.origin === location.origin && url.pathname.startsWith(`/courses/${id}/`) &&
         !/\/feeds?\/|\.ics(?:$|\/)/i.test(url.pathname) ? url.origin + url.pathname : "";
     } catch { return ""; }
   };

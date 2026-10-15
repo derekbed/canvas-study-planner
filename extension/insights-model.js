@@ -1,6 +1,6 @@
 (function (root) {
   "use strict";
-  const ORIGIN = "https://canvas.upenn.edu";
+  const ORIGIN = location.origin;
   const courseId = value => /^\d+$/.test(String(value ?? "")) ? String(value) : "";
   const text = (value, max = 160) => typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
 
