@@ -12,7 +12,7 @@ The selected background and light/dark mode are also cached in Canvas site stora
 node extension/scripts/build-local-release.mjs --out extension/local-release
 ```
 
-Load `extension/local-release` through `chrome://extensions` → Developer mode → Load unpacked. Click its toolbar button, read and accept the disclosure, then enter the HTTPS address of your school's Canvas site. Chrome asks for access to that exact school domain. Reload open Canvas tabs after connecting. Coursewise works with multiple connected schools, keeping course appearance and read-state separate by Canvas origin. Use the Dashboard three-dot menu → Coursewise settings for appearance and the next-deadline window.
+The unpacked local build has a black outline and white icon. The published extension keeps the solid blue icon, so you can tell them apart in Chrome. Load `extension/local-release` through `chrome://extensions` → Developer mode → Load unpacked. Click its toolbar button, read and accept the disclosure, then enter the HTTPS address of your school's Canvas site. Chrome asks for access to that exact school domain. Reload open Canvas tabs after connecting. Coursewise works with multiple connected schools, keeping course appearance and read-state separate by Canvas origin. Use the Dashboard three-dot menu → Coursewise settings for appearance and the next-deadline window.
 
 After rebuilding, reload the unpacked extension in `chrome://extensions` to see changes.
 
@@ -20,7 +20,7 @@ The generated package requests no Canvas site access at install time. It can rea
 
 ## Store submission
 
-The package targets Chrome 119 or later. Build a ZIP containing only the files inside `extension/local-release`, then upload it to the Chrome Web Store Developer Dashboard. Use [STORE_SUBMISSION.md](STORE_SUBMISSION.md) for proposed listing text, permission explanations, privacy declarations, and final gates.
+The package targets Chrome 119 or later. For a store release, run `node extension/scripts/build-local-release.mjs --out extension/store-release --store-icons`, then build a ZIP containing only the files inside `extension/store-release`. This keeps the published icon colored. Upload that ZIP to the Chrome Web Store Developer Dashboard. Use [STORE_SUBMISSION.md](STORE_SUBMISSION.md) for proposed listing text, permission explanations, privacy declarations, and final gates.
 
 `privacy.html` is an in-extension copy. The public policy is live at https://derekbed.github.io/canvas-study-planner/ and belongs in the Chrome Web Store privacy field. A full website or Coursewise backend is not required.
 

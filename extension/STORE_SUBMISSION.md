@@ -1,6 +1,6 @@
 # Chrome Web Store submission draft: Coursewise for Canvas
 
-This document applies only to the generated local edition in `extension/local-release`. Confirm all statements against the final ZIP and the Chrome Web Store dashboard before submitting.
+This document applies to the generated store edition in `extension/store-release` (`node extension/scripts/build-local-release.mjs --out extension/store-release --store-icons`). Confirm all statements against the final ZIP and the Chrome Web Store dashboard before submitting.
 
 ## Store listing
 

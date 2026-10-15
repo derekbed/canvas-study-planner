@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const source = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outIndex = process.argv.indexOf("--out");
 const output = resolve(outIndex < 0 ? join(source, "local-release") : process.argv[outIndex + 1]);
+const storeIcons = process.argv.includes("--store-icons");
 if (output === source || source.startsWith(output + "/")) throw new Error("Choose a separate output directory.");
 
 const files = [
@@ -21,6 +22,7 @@ if (manifest.content_scripts || manifest.host_permissions?.some(origin => origin
 for (const file of files) {
   const target = join(output, file);
   await mkdir(dirname(target), { recursive: true });
-  await copyFile(join(source, file), target);
+  const icon = /^icon(?:16|32|48|128)\.png$/.test(file);
+  await copyFile(join(source, icon && !storeIcons ? "testing-icons" : "", file), target);
 }
-console.log(`Local Coursewise extension staged at ${output}`);
+console.log(`Coursewise extension with ${storeIcons ? "store" : "local outline"} icons staged at ${output}`);
