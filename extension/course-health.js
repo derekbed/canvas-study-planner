@@ -40,16 +40,15 @@
     const status = !hasWork ? "limited-data" : urgent || score >= 30 ? "needs-attention" : score >= 12 || confidence !== "good" ? "watch" : "on-track";
     const next = [...validWork].filter(item => safeDate(item.dueAt) >= now).sort((a, b) => safeDate(a.dueAt) - safeDate(b.dueAt))[0];
     const actions = [];
-    const action = (item, reason, priority) => {
+    const action = item => {
       const href = safeLink(item.url, id);
-      if (href) actions.push({ id: `${item.kind || "item"}:${item.id}`, label: item.title, reason, href, priority,
+      if (href) actions.push({ label: item.title, href,
         dateAt: item.postedAt || item.dueAt, dateLabel: item.postedAt ? "Posted" : "Due" });
     };
-    [...overdue].sort((a, b) => safeDate(b.dueAt) - safeDate(a.dueAt)).forEach(item => action(item, "Overdue assignment", 0));
-    missing.filter(item => !overdue.includes(item)).forEach(item => action(item, "Canvas marked this submission missing", 0.5));
-    if (!overdue.length && !missing.length && next) action(next, next48.includes(next) ? "Due within 48 hours" : "Next deadline", 1);
-    if (recentUnread.length) action(recentUnread[0], "Recent announcement", 2);
-    actions.sort((a, b) => a.priority - b.priority);
+    [...overdue].sort((a, b) => safeDate(b.dueAt) - safeDate(a.dueAt)).forEach(action);
+    missing.filter(item => !overdue.includes(item)).forEach(action);
+    if (!overdue.length && !missing.length && next) action(next);
+    if (recentUnread.length) action(recentUnread[0]);
     const phrase = overdue.length ? plural(overdue.length, "overdue assignment") :
       missing.length ? plural(missing.length, "missing submission") :
       week.length ? `${plural(week.length, "deadline")} in the next 7 days` :

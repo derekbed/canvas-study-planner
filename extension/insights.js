@@ -248,6 +248,7 @@
         remove.addEventListener("click", () => {
           pendingImageUrl = ""; pendingFileName = ""; renderPicture();
           status.textContent = "Picture removed. Click Save.";
+          details.querySelector(".cw-appearance-secondary")?.focus();
         });
         previewWrap.append(preview, remove); details.append(previewWrap);
       }
@@ -271,7 +272,7 @@
           }
           pendingImageUrl = null; pendingFileName = ""; render(); renderPicture(); status.textContent = saved ? "Saved to Coursewise." : "Saved in this browser.";
         } catch (error) { status.textContent = error.message; }
-        finally { controls.forEach(control => { control.disabled = false; }); if (backdrop.isConnected) upload.focus(); }
+        finally { controls.forEach(control => { control.disabled = false; }); if (backdrop.isConnected) details.querySelector('input[type="file"]')?.focus(); }
       });
       details.append(save);
       upload.addEventListener("change", async () => {

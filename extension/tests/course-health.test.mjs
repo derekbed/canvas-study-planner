@@ -24,10 +24,8 @@ test("recent overdue work is urgent and receives the first action", () => {
   assert.equal(result.actions[0].label, "Response");
   assert.equal(result.actions[0].dateAt, fixture.overdue[0].dueAt);
   assert.equal(result.actions[0].dateLabel, "Due");
-  assert.equal(result.actions[0].reason, "Overdue assignment");
   assert.equal(result.actions[1].label, "Update");
   assert.equal(result.actions[1].dateLabel, "Posted");
-  assert.equal(result.actions[1].reason, "Recent announcement");
 });
 test("clustered deadlines prompt watch and show the next deadline", () => {
   const result = calculate({ ...base, work: fixture.clustered });
@@ -52,7 +50,7 @@ test("missing submissions are urgent and external links are not actions", () => 
   assert.equal(result.signals.submissions.missing, 1);
   assert.equal(result.actions.length, 0);
   const linked = calculate({ ...base, work: [{ ...fixture.clustered[0], missing: true }] });
-  assert.equal(linked.actions[0].reason, "Canvas marked this submission missing");
+  assert.equal(linked.actions[0].href, fixture.clustered[0].url);
 });
 test("scores stay within documented weights and announcements respect local read state", () => {
   const announcements = Array.from({ length: 10 }, (_, index) => ({ id: String(index), courseId: "123", title: "News", postedAt: fixture.now, url: `https://canvas.upenn.edu/courses/123/discussion_topics/${index}` }));
