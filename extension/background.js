@@ -1,7 +1,7 @@
 "use strict";
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
-const defaults = { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, showCardGrades: true };
+const defaults = { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, showCardGrades: true, showOnlyCourseName: false };
 const PREFERENCE_KEYS = Object.keys(defaults);
 const MAIN_FILES = ["insights-model.js", "course-health.js", "vendor/libheif-without-unsafe-eval.js", "course-image.js", "insights.js"];
 const VERSION_POLICY_URL = "https://raw.githubusercontent.com/derekbed/canvas-study-planner/main/docs/extension-version.json";
@@ -132,7 +132,7 @@ function savePreferences(patch) {
   const task = saveQueue.then(async () => {
     const saved = await chrome.storage.local.get("cwCanvasPreferences");
     const next = { ...defaults, ...saved.cwCanvasPreferences, ...patch };
-    if (!/^#[0-9a-f]{6}$/i.test(next.canvasBackground) || !["light", "dark", "system"].includes(next.canvasThemeMode) || ![1, 3, 7, 14, 30].includes(next.deadlineWindowDays) || typeof next.showCardGrades !== "boolean")
+    if (!/^#[0-9a-f]{6}$/i.test(next.canvasBackground) || !["light", "dark", "system"].includes(next.canvasThemeMode) || ![1, 3, 7, 14, 30].includes(next.deadlineWindowDays) || typeof next.showCardGrades !== "boolean" || typeof next.showOnlyCourseName !== "boolean")
       throw new Error("Choose valid Coursewise settings.");
     await chrome.storage.local.set({ cwCanvasPreferences: next });
     return next;

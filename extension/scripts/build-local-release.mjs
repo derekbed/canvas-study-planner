@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,6 +22,10 @@ if (manifest.content_scripts || manifest.host_permissions?.some(origin => origin
 for (const file of files) {
   const target = join(output, file);
   await mkdir(dirname(target), { recursive: true });
+  if (file === "manifest.json" && !storeIcons) {
+    await writeFile(target, JSON.stringify({ ...manifest, name: "Coursewise local" }, null, 2) + "\n");
+    continue;
+  }
   const icon = /^icon(?:16|32|48|128)\.png$/.test(file);
   await copyFile(join(source, icon && !storeIcons ? "testing-icons" : "", file), target);
 }
