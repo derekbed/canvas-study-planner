@@ -58,6 +58,13 @@ test('course card grade toggle persists and rejects non-boolean values', async (
   assert.equal((await send({ showCardGrades: 'no' })).ok, false);
   assert.equal((await send({}, 'cw:getPreferences')).data.showCardGrades, false);
 });
+test('course name only toggle persists and rejects non-boolean values', async () => {
+  const send = harness();
+  assert.equal((await send({}, 'cw:getPreferences')).data.showOnlyCourseName, false);
+  assert.equal((await send({ showOnlyCourseName: true })).ok, true);
+  assert.equal((await send({ showOnlyCourseName: 'yes' })).ok, false);
+  assert.equal((await send({}, 'cw:getPreferences')).data.showOnlyCourseName, true);
+});
 test('data requests are blocked before disclosure consent', async () => {
   const send = harness({ cwDataConsent: false });
   const result = await send({}, 'cw:getPreferences');

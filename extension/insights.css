@@ -25,7 +25,7 @@ body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard :is(.ic-D
 body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .ic-DashboardCard__header-button{display:inline-flex!important;align-items:center;justify-content:center;line-height:1!important}
 body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .ic-DashboardCard__header-button .icon-more{font-size:14px!important;line-height:1!important}
 body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .cw-card-resize-handle{
-  position:absolute;z-index:8;right:0;bottom:0;width:25px;height:25px;
+  position:absolute;z-index:1;right:0;bottom:0;width:25px;height:25px;
   cursor:nwse-resize;touch-action:none;
 }
 body.cw-organizer-dashboard:not(.cw-horizontal-view) .ic-DashboardCard .cw-card-resize-handle::after{
@@ -43,14 +43,17 @@ body.cw-organizer-dashboard .ic-DashboardCard .ic-DashboardCard__header_content{
   max-height:116px;
   padding:10px 14px 34px;
   overflow:hidden;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
 }
 body.cw-organizer-dashboard .ic-DashboardCard .ic-DashboardCard__header-title,
 body.cw-organizer-dashboard .ic-DashboardCard .ic-DashboardCard__header-title *{
   box-sizing:border-box;
   margin:0;
   padding:0;
-  font-size:14px!important;
-  line-height:20px!important;
+  font-size:16px!important;
+  line-height:22px!important;
 }
 body.cw-organizer-dashboard .ic-DashboardCard .ic-DashboardCard__header-subtitle,
 body.cw-organizer-dashboard .ic-DashboardCard .ic-DashboardCard__header-subtitle *{
@@ -100,6 +103,30 @@ body.cw-organizer-dashboard .ic-DashboardCard .cw-card-due :is(a,.cw-card-due__w
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
+}
+/* The name-only card has no subtitle or term to fill the standard title panel. */
+body.cw-organizer-dashboard.cw-only-course-name:not(.cw-horizontal-view) .ic-DashboardCard{
+  height:372px!important;
+  min-height:372px!important;
+  max-height:372px!important;
+}
+body.cw-organizer-dashboard.cw-only-course-name:not(.cw-horizontal-view) .ic-DashboardCard .ic-DashboardCard__header_content{
+  height:102px;
+  min-height:102px;
+  max-height:102px;
+  padding:10px 14px 36px;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  outline:0;
+}
+body.cw-organizer-dashboard.cw-only-course-name:not(.cw-horizontal-view) .ic-DashboardCard .ic-DashboardCard__header-title,
+body.cw-organizer-dashboard.cw-only-course-name:not(.cw-horizontal-view) .ic-DashboardCard .ic-DashboardCard__header-title *{
+  font-size:18px!important;
+  line-height:24px!important;
+}
+body.cw-organizer-dashboard.cw-only-course-name:not(.cw-horizontal-view) .ic-DashboardCard .cw-health-row{
+  bottom:26px;
 }
 
 .cw-hub{--cw-ink:#142b3f;--cw-muted:#617589;--cw-line:#dce6ec;--cw-teal:#138a81;margin:16px 0 28px;border:1px solid #d8e4e9;border-radius:22px;background:#fff;color:var(--cw-ink);box-shadow:0 15px 40px #0f304014;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}
@@ -176,6 +203,7 @@ body.cw-organizer-dashboard.cw-organizer-collapsed #right-side-wrapper{display:n
    whole content column, flush with the top, so cards scroll fully under it. */
 body.cw-organizer-dashboard{--cw-content-gutter-left:48px;--cw-content-gutter-right:8px}
 body.cw-organizer-dashboard #dashboard_header_container{top:0!important;margin-left:calc(-1 * var(--cw-content-gutter-left))!important;margin-right:calc(-1 * var(--cw-content-gutter-right))!important;padding-left:var(--cw-content-gutter-left)!important;padding-right:var(--cw-content-gutter-right)!important;background:var(--cw-canvas-background,#fff)!important}
+body.cw-organizer-dashboard #dashboard_header_container .ic-Dashboard-header__layout{border-bottom:0!important}
 /* With the sidebar open, also extend the header over the sidebar column, and
    start the sidebar level with the first row of cards so the header never hides it. */
 body.cw-organizer-dashboard:not(.cw-organizer-collapsed){--cw-header-extend-right:calc(var(--cw-content-gutter-right) + var(--cw-rail-width,320px) + 28px)}
@@ -364,7 +392,7 @@ body.cw-horizontal-view.cw-canvas-dark .ic-DashboardCard .cw-horizontal-resize-h
 
 /* One compact course-health control across Canvas card, list, and horizontal views. */
 .ic-DashboardCard .ic-DashboardCard__header{position:relative}
-.ic-DashboardCard .cw-health-row{position:absolute;z-index:1;right:10px;bottom:18px;left:10px;display:flex;align-items:center;gap:7px;max-width:calc(100% - 20px);height:28px;min-height:28px;padding:3px 8px;border:1px solid #b9d5d3;border-radius:6px;background:#f0faf8;color:#175e5c;font:600 10px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:left;cursor:pointer;white-space:nowrap}
+.ic-DashboardCard .cw-health-row{position:absolute;z-index:1;right:10px;bottom:16px;left:10px;display:flex;align-items:center;gap:7px;max-width:calc(100% - 20px);height:28px;min-height:28px;padding:3px 8px;border:1px solid #b9d5d3;border-radius:6px;background:#f0faf8;color:#175e5c;font:600 10px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:left;cursor:pointer;white-space:nowrap}
 .ic-DashboardCard .cw-health-row strong{flex:none;font:inherit;font-weight:800}.ic-DashboardCard .cw-health-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ic-DashboardCard .cw-health-row--watch{border-color:#dec797;background:#fff8eb;color:#754c14}.ic-DashboardCard .cw-health-row--needs-attention{border-color:#e5b9b4;background:#fff2f0;color:#8c3030}.ic-DashboardCard .cw-health-row--limited-data{border-color:#cbd4dc;background:#f5f7f9;color:#53616e}
 .ic-DashboardCard .cw-health-row--loading{cursor:default;opacity:.7}
@@ -372,9 +400,17 @@ body.cw-horizontal-view.cw-canvas-dark .ic-DashboardCard .cw-horizontal-resize-h
 .ic-DashboardCard .cw-health-row:focus-visible,.cw-health-sheet :is(button,a):focus-visible{outline:3px solid #167eaa;outline-offset:2px}
 body.cw-horizontal-view .ic-DashboardCard .cw-health-row{position:static;grid-column:2;grid-row:2;width:auto;max-width:none;margin:0 6px 3px 4px}
 .cw-health-dialog{box-sizing:border-box;width:min(480px,calc(100vw - 24px));max-height:min(80vh,720px);padding:0;border:1px solid #d5e2e5;border-radius:16px;background:#fff;color:#193344;box-shadow:0 20px 70px #102d4355;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.cw-health-dialog::backdrop{background:#10233288}.cw-health-sheet{padding:22px;overflow:auto}.cw-health-head{display:flex;justify-content:space-between;gap:14px}.cw-health-head h2{margin:3px 0 12px;font-size:21px;line-height:1.2}.cw-health-eyebrow{font-size:10px;font-weight:800;letter-spacing:.11em;color:#607785}.cw-health-close{align-self:flex-start;border:0;background:transparent;color:inherit;font-size:26px;cursor:pointer}.cw-health-state{display:inline-block;padding:4px 8px;border-radius:6px;background:#e5f5f0;color:#14615d;font-size:12px}.cw-health-state--watch{background:#fff2dc;color:#754c14}.cw-health-state--needs-attention{background:#ffebe8;color:#8c3030}.cw-health-state--limited-data{background:#edf1f4;color:#53616e}.cw-health-summary{margin:10px 0 16px;font-size:13px;line-height:1.5}.cw-health-signals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.cw-health-tile{display:flex;flex-direction:column;gap:5px;padding:10px;border:1px solid #d9e5e8;border-radius:9px}.cw-health-tile span{font-size:11px;color:#526b7a}.cw-health-tile strong{font-size:12px}.cw-health-sheet h3{margin:18px 0 8px;font-size:14px}.cw-health-actions{margin:0;padding-left:20px}.cw-health-actions li{margin:0 0 9px;font-size:12px}.cw-health-actions a{color:#086c75;font-weight:700}.cw-health-actions li span{display:block;color:#637886}.cw-health-footer{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:16px}.cw-health-footer a,.cw-health-footer button{padding:8px 10px;border:1px solid #b9d5d3;border-radius:7px;background:#eef9f6;color:#175e5c;font-size:12px;font-weight:700;line-height:1.2;text-decoration:none;cursor:pointer}.cw-health-sync,.cw-health-note{margin:12px 0 0;color:#607785;font-size:11px;line-height:1.4}
+.cw-health-actions time{display:block;color:#637886}
 body.cw-canvas-themed :is(.cw-health-dialog,.cw-health-tile,.ic-DashboardCard .cw-health-row){background:var(--cw-canvas-background);color:var(--cw-canvas-ink);border-color:var(--cw-canvas-border)}
+body.cw-canvas-themed .cw-health-actions time{color:var(--cw-canvas-muted)}
 body.cw-canvas-themed .cw-health-sheet :is(.cw-health-eyebrow,.cw-health-tile span,.cw-health-sync,.cw-health-note){color:var(--cw-canvas-muted)}
 body.cw-canvas-themed .cw-health-sheet :is(a,button){color:var(--cw-canvas-link)}
+body.cw-canvas-dark .cw-health-dialog .cw-health-state{background:#173f37!important;color:#c8f4e4!important}
+body.cw-canvas-dark .cw-health-dialog .cw-health-state--watch{background:#493719!important;color:#ffe1a6!important}
+body.cw-canvas-dark .cw-health-dialog .cw-health-state--needs-attention{background:#4a282b!important;color:#ffd0cc!important}
+body.cw-canvas-dark .cw-health-dialog .cw-health-state--limited-data{background:#2b3b49!important;color:#dce8f2!important}
+body.cw-canvas-dark .cw-health-dialog .cw-health-footer :is(a,button){background:#243748!important;color:#f2f8ff!important;border-color:#6d8598!important}
+body.cw-canvas-dark .cw-health-dialog .cw-health-footer :is(a,button):is(:hover,:focus-visible){background:#34536a!important;border-color:#9bb9cb!important}
 @media(max-width:600px){.cw-health-dialog{position:fixed;inset:auto 0 0;width:100%;max-width:100%;max-height:85dvh;margin:0;border-radius:16px 16px 0 0}.cw-health-sheet{padding:18px}}
 @media (max-width: 600px) {
   body.cw-horizontal-view .ic-DashboardCard { grid-template-columns: minmax(0, 1fr) 96px; }

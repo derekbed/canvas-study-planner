@@ -14,6 +14,7 @@
   overflow: auto;
 }
 .cw-appearance-backdrop[open] { display: grid; place-items: center; }
+body.cw-only-course-name .ic-DashboardCard :is(.ic-DashboardCard__header-subtitle, .ic-DashboardCard__header-term) { display: none !important; }
 .cw-appearance-backdrop::backdrop { background: rgb(8 17 28 / 55%); }
 .cw-appearance-dialog {
   --cw-ink: #182c3e;
@@ -82,7 +83,14 @@
 .cw-appearance-upload input { width: 100%; color: var(--cw-muted); font-weight: 400; }
 .cw-appearance-upload input::file-selector-button, .cw-appearance-secondary { padding: 8px 12px; border: 1px solid var(--cw-line); border-radius: 8px; background: var(--cw-dialog-field); color: var(--cw-ink); cursor: pointer; }
 .cw-appearance-upload input::file-selector-button { margin-right: 10px; }
-.cw-appearance-preview { width: 100%; max-height: 170px; object-fit: cover; border-radius: 10px; }
+.cw-appearance-dialog:has(#cw-course-picture-title) :is(button, input, select):is(:focus, :focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.cw-appearance-preview-wrap { position: relative; width: 100%; max-height: 170px; overflow: hidden; border-radius: 10px; }
+.cw-appearance-preview { display: block; width: 100%; max-height: 170px; object-fit: cover; }
+.cw-appearance-preview-remove { position: absolute; top:8px; right:8px; display:grid; place-items:center; width:28px; height:28px; padding:0; border:1px solid #ffffffb3; border-radius:50%; background:#111923e6; color:#fff; cursor:pointer; font:20px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+.cw-appearance-preview-remove:hover { background:#26394b; }
 .cw-appearance-secondary { justify-self: start; }
 .cw-appearance-dark-note { padding: 12px 14px; border-radius: 10px; background: var(--cw-dialog-field); color: var(--cw-muted); }
 .cw-appearance-status { color: var(--cw-muted); font-size: 13px; }
@@ -112,6 +120,12 @@ body.cw-canvas-dark {
 body.cw-canvas-dark :is(#content, #right-side, #breadcrumbs, #footer, #section-tabs) { color: var(--cw-dark-ink); }
 body.cw-canvas-dark :is(#content, #right-side, #breadcrumbs, #footer, #section-tabs) :is(h1, h2, h3, h4, h5, h6) { color: var(--cw-dark-ink); }
 body.cw-canvas-dark :is(#content, #right-side, #breadcrumbs, #footer, #section-tabs) a { color: #a8d3ff; }
+body.cw-canvas-dark #section-tabs .nav-badge {
+  background: var(--cw-dark-raised) !important;
+  border: 1px solid #526274 !important;
+  color: var(--cw-dark-muted) !important;
+  box-shadow: none !important;
+}
 body.cw-canvas-dark :is(.ic-DashboardCard, .ic-DashboardCard__header_content, .ic-DashboardCard__action-container, .ic-DashboardCard__action-layout, .ic-Action-header, .header-bar, .item-group-container, .item-group-condensed, .ig-header, .ig-row, .ig-details, .module-item-title, .discussion-topic, .discussion-entry, .entry-content, .message-list, .ic-Table, .ic-Table th, .ic-Table td, .summary, .event-details, .ui-dialog, .ui-dialog-titlebar, .ui-widget-content, .ui-widget-header) {
   background-color: var(--cw-dark-surface) !important;
   color: var(--cw-dark-ink) !important;
@@ -192,7 +206,7 @@ body.cw-canvas-dark :is(.cw-hub__check, .cw-hub__more, .cw-hub__read-toggle):hov
 body.cw-canvas-dark .cw-rail-collapse, html:has(body.cw-canvas-dark) .cw-rail-reopen { background: #1b2838; color: #f5f7fa; border-color: #3b4e63; }
 
 /* Uploaded images cover only the course header; menus and grade badges stay above. */
-.cw-custom-course-header { position: relative; isolation: isolate; overflow: hidden; opacity: 1 !important; }
+.cw-custom-course-header { position: relative; isolation: isolate; overflow: hidden; border: 0 !important; opacity: 1 !important; }
 .cw-custom-course-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 1; border-radius: inherit; }
 .cw-custom-course-header :is(.ic-DashboardCard__header-button, .ic-DashboardCard__header-button-bg, .cw-card-grade) { z-index: 3; }
 body.cw-horizontal-view .ic-DashboardCard .ic-DashboardCard__header > .ic-DashboardCard__header_image.cw-custom-course-header {
@@ -241,6 +255,24 @@ body.cw-canvas-themed:not(.cw-canvas-dark) :is(#content > h1, .ic-Dashboard-head
 /* Canvas uses spans for the Dashboard heading and nests Recent Feedback in a panel. */
 body.cw-canvas-themed :is(#dashboard_header_container [data-cid="Heading"], #dashboard_header_container .hidden-phone, #DashboardOptionsMenu_Container button, #DashboardOptionsMenu_Container svg, #DashboardOptionsMenu_Container path, #right-side .recent_feedback h2) {
   color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed :is(#immersive_reader_mount_point, #immersive_reader_mobile_mount_point) button {
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed :is(#immersive_reader_mount_point, #immersive_reader_mobile_mount_point) button [class*="baseButton__content"] {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-canvas-border) !important;
+  color: var(--cw-canvas-ink) !important;
+  box-shadow: none !important;
+}
+body.cw-canvas-themed :is(#immersive_reader_mount_point, #immersive_reader_mobile_mount_point) button:is(:hover, :focus, :focus-visible, :active) [class*="baseButton__content"] {
+  background: color-mix(in srgb, var(--cw-canvas-ink) 8%, var(--cw-canvas-background)) !important;
+}
+body.cw-canvas-themed :is(#immersive_reader_mount_point, #immersive_reader_mobile_mount_point) button svg path {
+  fill: currentColor !important;
+}
+body.cw-canvas-themed :is(#immersive_reader_mount_point, #immersive_reader_mobile_mount_point) button:focus-visible {
+  outline: 2px solid var(--cw-canvas-border) !important;
 }
 body.cw-canvas-themed #DashboardOptionsMenu_Container svg,
 body.cw-canvas-themed #DashboardOptionsMenu_Container path {
@@ -365,6 +397,46 @@ body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(
 body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(7) { width: 19% !important; }
 body.cw-canvas-themed #grade-summary-content #grades_summary thead th:nth-child(8) { width: 4% !important; }
 body.cw-canvas-themed #grade-summary-content #grades_summary tbody tr[id^="submission_group"] td:nth-child(7) { white-space: normal !important; }
+body.cw-canvas-dark #GradeSummarySelectMenuGroup [class*="formFieldLayout__label"] {
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-dark #apply_select_menus [class*="baseButton__content"] {
+  background: var(--cw-dark-raised) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: var(--cw-canvas-ink) !important;
+  opacity: 1 !important;
+}
+body.cw-canvas-dark #apply_select_menus:disabled [class*="baseButton__content"] {
+  border-color: #526274 !important;
+  color: var(--cw-canvas-muted) !important;
+}
+body.cw-canvas-dark #grades_summary td.details a[role="button"] {
+  background: var(--cw-dark-raised) !important;
+  border-color: #526274 !important;
+  color: var(--cw-canvas-muted) !important;
+  box-shadow: none !important;
+}
+body.cw-canvas-dark #grades_summary td.details a[role="button"]:is(:hover, :focus-visible) {
+  background: #31485c !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-dark #grades_summary td.details a[role="button"] i::before {
+  color: #fff !important;
+}
+body.cw-canvas-dark #grades_summary :is(th, td) {
+  background-color: var(--cw-canvas-background) !important;
+}
+body.cw-canvas-dark #grades_summary .grade_dot {
+  background: #6b8ba2 !important;
+}
+body.cw-canvas-dark #grades_summary .submission-missing-pill [data-cid="Pill"] > div {
+  background: #493034 !important;
+  border-color: #aa666b !important;
+  color: #ffd1d2 !important;
+}
+body.cw-canvas-dark #grades_summary .submission-missing-pill [data-cid="Pill"] > div * {
+  color: inherit !important;
+}
 body.cw-canvas-themed:not(.cw-canvas-dark) .ic-DashboardCard {
   color: var(--cw-card-ink) !important;
 }
@@ -387,6 +459,14 @@ body.cw-canvas-themed :is(#section-tabs, .ic-Action-header, .header-bar, .item-g
 }
 body.cw-canvas-themed :is(#content, #right-side, #section-tabs) :is(hr, .ic-Action-header, .header-bar, .right-side-list li, .events_list .h2, .stream-category, .course_home_content li, .ic-Table th, .ic-Table td) {
   border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-dark #course_home_content .recent_activity .stream-category:is(:hover, :focus-within, :has(.toggle-details[aria-expanded="true"])),
+body.cw-canvas-dark #course_home_content .recent_activity .stream-category:is(:hover, :focus-within, :has(.toggle-details[aria-expanded="true"])) > .stream_header {
+  background: #243748 !important;
+  color: #f7f9fc !important;
+}
+body.cw-canvas-dark #course_home_content .recent_activity .stream-category:is(:hover, :focus-within, :has(.toggle-details[aria-expanded="true"])) .stream_header :is(.title, .toggle-details, .image-block-image, .image-block-image i) {
+  color: #f7f9fc !important;
 }
 /* Keep modules and controls flush with the page; their outlines provide the shape. */
 body.cw-canvas-themed #content :is(.item-group-container, .item-group-condensed, .ig-header, .ig-row, .ig-details, .module-item-title, .context_module, .context_module_item),
@@ -451,6 +531,8 @@ body.cw-canvas-themed :is(#calendar-app, #minical, .mini_calendar, .mini-calenda
   border-color: var(--cw-calendar-grid-border) !important;
 }
 body.cw-canvas-themed .fc .fc-day.fc-today { background-color: color-mix(in srgb, var(--cw-nav-background) 25%, var(--cw-canvas-surface)) !important; }
+/* FullCalendar overlays date labels and events on the day cells; let today's fill show through. */
+body.cw-canvas-themed .fc .fc-content-skeleton td { background-color: transparent !important; }
 body.cw-canvas-themed .fc :is(.fc-day-number, .fc-day-header, .fc-toolbar h2) { color: var(--cw-surface-ink) !important; }
 /* Canvas uses several event variants; style their shared FullCalendar element. */
 body.cw-canvas-themed .fc .fc-event {
@@ -602,15 +684,27 @@ body.cw-canvas-themed [role="menu"]:has([data-testid="list-view-menu-item"]) [ro
   background: color-mix(in srgb, var(--cw-canvas-background) 45%, var(--cw-nav-background)) !important;
   color: var(--cw-canvas-ink) !important;
 }
-body.cw-canvas-themed #DashboardOptionsMenu_Container > button {
-  background: color-mix(in srgb, var(--cw-canvas-background) 78%, var(--cw-nav-background)) !important;
-  border: 1px solid var(--cw-canvas-border) !important;
+body.cw-canvas-themed #DashboardOptionsMenu_Container button[data-testid="dashboard-options-button"] {
+  background: var(--cw-dashboard-menu-surface) !important;
+  border: 1px solid var(--cw-dashboard-menu-outline) !important;
   border-radius: 10px;
   color: var(--cw-canvas-ink) !important;
 }
-body.cw-canvas-themed #DashboardOptionsMenu_Container > button:is(:hover, :focus-visible) {
-  background: color-mix(in srgb, var(--cw-canvas-background) 45%, var(--cw-nav-background)) !important;
+body.cw-canvas-themed #DashboardOptionsMenu_Container button[data-testid="dashboard-options-button"]:is(:hover, :focus, :focus-visible, :active, [aria-expanded="true"]) {
+  background: color-mix(in srgb, var(--cw-dashboard-menu-surface) 75%, var(--cw-canvas-ink)) !important;
+  border-color: var(--cw-canvas-ink) !important;
+  color: var(--cw-canvas-ink) !important;
 }
+body.cw-canvas-themed #DashboardOptionsMenu_Container button[data-testid="dashboard-options-button"] [class*="baseButton__content"] {
+  background: var(--cw-dashboard-menu-surface) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-radius: inherit;
+}
+body.cw-canvas-themed #DashboardOptionsMenu_Container button[data-testid="dashboard-options-button"]:is(:hover, :focus, :focus-visible, :active, [aria-expanded="true"]) [class*="baseButton__content"] {
+  background: color-mix(in srgb, var(--cw-dashboard-menu-surface) 75%, var(--cw-canvas-ink)) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed #DashboardOptionsMenu_Container button[data-testid="dashboard-options-button"] :is(svg, path) { color: inherit !important; fill: currentColor !important; }
 body.cw-canvas-themed .ic-DashboardCard__header-button-bg {
   background: var(--cw-canvas-background) !important;
   color: var(--cw-canvas-ink) !important;
@@ -618,6 +712,26 @@ body.cw-canvas-themed .ic-DashboardCard__header-button-bg {
 body.cw-canvas-themed .ic-DashboardCard__header-button :is(svg, path) { color: var(--cw-canvas-ink) !important; fill: currentColor !important; }
 /* Canvas' native course-card popout uses tabs and tab panels rather than a
    menu role. Keep the whole control in the active Canvas theme. */
+body.cw-canvas-themed [class*="contextView__content"]:has([role="tablist"]) {
+  background: var(--cw-dashboard-menu-surface) !important;
+  border: 1px solid var(--cw-dashboard-menu-outline) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed [class*="contextView__content"]:has([role="tablist"]) > [class*="contextView__arrow"] {
+  border-bottom-color: var(--cw-dashboard-menu-outline) !important;
+}
+body.cw-canvas-themed [class*="contextView__content"]:has([role="tablist"]) > [class*="contextView__arrow"]::after {
+  border-bottom-color: var(--cw-dashboard-menu-surface) !important;
+}
+body.cw-canvas-themed [role="tabpanel"] [class*="panel__content"] {
+  background: var(--cw-dashboard-menu-surface) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed [role="menu"][aria-label="Dashboard Card Movement Menu"]:has([role="menuitem"]:hover) [role="menuitem"]:not(:hover) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  outline: none !important;
+}
 body.cw-canvas-themed :is(.css-1deiz5f-view-tabs__container, [class*="view-tabs__container"]),
 body.cw-canvas-themed [role="tablist"],
 body.cw-canvas-themed :is([role="tabpanel"], [class*="tabs__panelsContainer"] > [class*="-panel"]) {
@@ -637,6 +751,43 @@ body.cw-canvas-themed :is([role="tab"][aria-selected="true"], [class*="view-tabs
 body.cw-canvas-themed :is([role="tabpanel"], [class*="tabs__panelsContainer"] > [class*="-panel"]) :is(button, input, [role="textbox"], [role="radio"]) {
   color: var(--cw-canvas-ink) !important;
   border-color: var(--cw-dashboard-menu-outline) !important;
+}
+body.cw-canvas-themed [role="tabpanel"] .ColorPicker__Container {
+  background: var(--cw-dashboard-menu-surface) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed [role="tabpanel"] .ColorPicker__Container :is([class*="formFieldLayout__label"], [class*="textInput__facade"]) {
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed [role="tabpanel"] .ColorPicker__Container [class*="textInput__facade"] {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-dashboard-menu-outline) !important;
+}
+body.cw-canvas-themed [role="tabpanel"] .ColorPicker__Container input::placeholder {
+  color: var(--cw-canvas-muted) !important;
+  opacity: 1;
+}
+body.cw-canvas-themed [role="tabpanel"] .ColorPicker__Actions button {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border: 1px solid var(--cw-dashboard-menu-outline) !important;
+}
+body.cw-canvas-themed [role="tabpanel"] .ColorPicker__Actions button:is(:hover, :focus-visible) {
+  background: color-mix(in srgb, var(--cw-dashboard-menu-surface) 75%, var(--cw-canvas-ink)) !important;
+}
+body.cw-canvas-dark [role="tabpanel"] .ColorPicker__Actions button [class*="baseButton__content"] {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-dark [role="tabpanel"] .ColorPicker__Actions button:is(:hover, :focus-visible) [class*="baseButton__content"] {
+  background: color-mix(in srgb, var(--cw-dashboard-menu-surface) 75%, var(--cw-canvas-ink)) !important;
+}
+body.cw-canvas-dark [role="tabpanel"] .ColorPicker__Actions #ColorPicker__Apply [class*="baseButton__content"] {
+  background: #23655e !important;
+  color: #fff !important;
+}
+body.cw-canvas-dark [role="tabpanel"] .ColorPicker__Actions button [class*="baseButton__children"] {
+  color: inherit !important;
 }
 /* Coursewise hides Canvas' Move to top / Move to bottom actions. The Course
    picture row is a copy of a native row, so it needs no styling of its own. */

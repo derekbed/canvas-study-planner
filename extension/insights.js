@@ -69,7 +69,9 @@
     const actions = node("ul", undefined, "cw-health-actions");
     if (health.actions.length) health.actions.slice(0, 4).forEach(item => {
       const li = node("li"); const link = node("a", item.label); link.href = item.href;
-      li.append(link, node("span", item.reason)); actions.append(li);
+      const when = node("time", `${item.dateLabel} ${dateTime.format(new Date(item.dateAt))}`);
+      when.dateTime = item.dateAt;
+      li.append(link, when); actions.append(li);
     });
     else actions.append(node("li", "Review this course in Canvas for the latest information."));
     sheet.append(actions);
@@ -127,6 +129,7 @@
   }
   function applyBackground() {
     palette.applyPreferences(state.preferences);
+    document.body.classList.toggle("cw-only-course-name", state.preferences.showOnlyCourseName === true);
   }
   async function saveAppearancePreferences(patch) {
     const controls = [...document.querySelectorAll(".cw-appearance-dialog :is(select,input,button):not(.cw-appearance-close)")];
@@ -158,6 +161,8 @@
     if (deadlineWindow) deadlineWindow.value = String(deadlineWindowDays());
     const gradeToggle = document.querySelector('.cw-appearance-dialog input[aria-label="Show grades on course cards"]');
     if (gradeToggle) gradeToggle.checked = showCardGrades();
+    const nameToggle = document.querySelector('.cw-appearance-dialog input[aria-label="Show only course names on cards"]');
+    if (nameToggle) nameToggle.checked = state.preferences.showOnlyCourseName === true;
     const picker = document.querySelector('.cw-appearance-dialog input[type="color"]');
     if (picker) picker.value = palette.background(state.preferences.canvasBackground || "#f7faf9");
     document.querySelectorAll(".cw-appearance-dialog [data-background-color]").forEach(swatch => {
@@ -195,6 +200,11 @@
     gradeToggle.checked = showCardGrades();
     gradeToggle.addEventListener("change", () => saveAppearancePreferences({ showCardGrades: gradeToggle.checked }));
     gradeLabel.append(gradeToggle, node("span", "Show grades on course cards")); box.append(gradeLabel);
+    const nameLabel = node("label", undefined, "cw-appearance-field cw-appearance-toggle");
+    const nameToggle = node("input"); nameToggle.type = "checkbox"; nameToggle.setAttribute("aria-label", "Show only course names on cards");
+    nameToggle.checked = state.preferences.showOnlyCourseName === true;
+    nameToggle.addEventListener("change", () => saveAppearancePreferences({ showOnlyCourseName: nameToggle.checked }));
+    nameLabel.append(nameToggle, node("span", "Show only course names on cards")); box.append(nameLabel);
     const resetSize = node("button", "Reset card size", "cw-appearance-reset"); resetSize.type = "button";
     resetSize.addEventListener("click", () => {
       updateCardScale(DEFAULT_CARD_SCALE); saveCardScale();
@@ -229,7 +239,18 @@
       const previewUrl = pendingImageUrl === null ? coursePicture(courseId) : pendingImageUrl;
       const upload = node("input"); upload.type = "file"; upload.accept = globalThis.CoursewiseCourseImage.accept; upload.setAttribute("aria-label", `Choose picture for ${course.name}`);
       const uploadLabel = node("label", "Choose course picture", "cw-appearance-upload"); uploadLabel.append(upload); details.append(uploadLabel);
-      if (previewUrl) { const preview = node("img", undefined, "cw-appearance-preview"); preview.src = previewUrl; preview.alt = `${course.name} picture preview`; details.append(preview); }
+      if (previewUrl) {
+        const previewWrap = node("div", undefined, "cw-appearance-preview-wrap");
+        const preview = node("img", undefined, "cw-appearance-preview"); preview.src = previewUrl; preview.alt = `${course.name} picture preview`;
+        const remove = node("button", "×", "cw-appearance-preview-remove"); remove.type = "button";
+        remove.setAttribute("aria-label", `Remove picture for ${course.name}`);
+        remove.title = "Remove picture";
+        remove.addEventListener("click", () => {
+          pendingImageUrl = ""; pendingFileName = ""; renderPicture();
+          status.textContent = "Picture removed. Click Save.";
+        });
+        previewWrap.append(preview, remove); details.append(previewWrap);
+      }
       if (pendingFileName) details.append(node("span", pendingFileName, "cw-hub__appearance-help"));
       const save = node("button", "Save", "cw-appearance-secondary"); save.type = "button";
       save.disabled = pendingImageUrl === null;
@@ -253,10 +274,6 @@
         finally { controls.forEach(control => { control.disabled = false; }); if (backdrop.isConnected) upload.focus(); }
       });
       details.append(save);
-      if (previewUrl) {
-        const remove = node("button", "Remove picture", "cw-appearance-secondary"); remove.type = "button";
-        remove.addEventListener("click", () => { pendingImageUrl = ""; pendingFileName = ""; renderPicture(); }); details.append(remove);
-      }
       upload.addEventListener("change", async () => {
         const file = upload.files?.[0]; if (!file) return;
         status.textContent = "Preparing picture…";

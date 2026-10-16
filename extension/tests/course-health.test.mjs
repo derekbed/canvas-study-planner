@@ -21,7 +21,12 @@ test("recent overdue work is urgent and receives the first action", () => {
     announcements: [{ id: "8", courseId: "123", title: "Update", postedAt: fixture.now, url: "https://canvas.upenn.edu/courses/123/discussion_topics/8" }] });
   assert.equal(result.status, "needs-attention");
   assert.equal(result.signals.deadlines.overdue, 1);
+  assert.equal(result.actions[0].label, "Response");
+  assert.equal(result.actions[0].dateAt, fixture.overdue[0].dueAt);
+  assert.equal(result.actions[0].dateLabel, "Due");
   assert.equal(result.actions[0].reason, "Overdue assignment");
+  assert.equal(result.actions[1].label, "Update");
+  assert.equal(result.actions[1].dateLabel, "Posted");
   assert.equal(result.actions[1].reason, "Recent announcement");
 });
 test("clustered deadlines prompt watch and show the next deadline", () => {
