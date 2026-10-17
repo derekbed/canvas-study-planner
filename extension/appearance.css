@@ -134,6 +134,26 @@ body.cw-canvas-dark :is(.ic-Dashboard-header, #breadcrumbs, #footer, #section-ta
 body.cw-canvas-dark :is(.Button, .btn, .ui-button) { background: var(--cw-dark-raised) !important; color: var(--cw-dark-ink) !important; border-color: var(--cw-dark-line) !important; text-shadow: none; }
 body.cw-canvas-dark :is(.Button--primary, .btn-primary) { background: #23655e !important; color: #fff !important; }
 body.cw-canvas-dark :is(#content, #right-side) :is(input:not([type="color"]):not([type="checkbox"]):not([type="radio"]), textarea, select) { background-color: var(--cw-dark-surface); color: var(--cw-dark-ink); border-color: var(--cw-dark-line); }
+/* Canvas Inbox renders its action toolbar with separate light React surfaces. */
+body.cw-canvas-dark #content [data-testid="tool-bar"] {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-dark-ink) !important;
+  border-color: var(--cw-dark-line) !important;
+}
+body.cw-canvas-dark #content [data-testid="tool-bar"] button { color: var(--cw-dark-ink) !important; }
+body.cw-canvas-dark #content [data-testid="tool-bar"] button:disabled { color: var(--cw-dark-muted) !important; }
+body.cw-canvas-dark #content [data-testid="tool-bar"] button [class*="baseButton__content"] {
+  background: var(--cw-dark-raised) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: inherit !important;
+}
+body.cw-canvas-dark #content [data-testid="tool-bar"] button:not(:disabled):is(:hover, :focus-visible) [class*="baseButton__content"] {
+  background: #31485c !important;
+}
+body.cw-canvas-dark #content [data-testid="tool-bar"] button :is(svg, path) {
+  color: inherit !important;
+  fill: currentColor !important;
+}
 body.cw-canvas-dark :is([role="menu"], [role="listbox"], [role="menu"] ul, [role="menu"] li) { background: var(--cw-dark-surface) !important; color: var(--cw-dark-ink) !important; border-color: var(--cw-dark-line) !important; }
 body.cw-canvas-dark :is([role^="menuitem"], [role="option"]) { background: var(--cw-dark-surface) !important; color: var(--cw-dark-ink) !important; }
 body.cw-canvas-dark :is([role^="menuitem"], [role="option"]) :is(span, svg) { background-color: transparent !important; color: inherit !important; }
