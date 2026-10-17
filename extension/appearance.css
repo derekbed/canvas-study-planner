@@ -154,6 +154,19 @@ body.cw-canvas-dark #content [data-testid="tool-bar"] button :is(svg, path) {
   color: inherit !important;
   fill: currentColor !important;
 }
+body.cw-canvas-dark #content input[data-testid="conversationListItem-Checkbox"] + label [class*="checkboxFacade__facade"] {
+  background: var(--cw-dark-raised) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark #content input[data-testid="conversationListItem-Checkbox"]:checked + label [class*="checkboxFacade__facade"] {
+  background: #23655e !important;
+  border-color: var(--cw-dark-accent) !important;
+}
+body.cw-canvas-dark #content input[data-testid="conversationListItem-Checkbox"]:focus-visible + label [class*="checkboxFacade__facade"] {
+  outline: 2px solid var(--cw-dark-accent) !important;
+  outline-offset: 2px;
+}
 body.cw-canvas-dark :is([role="menu"], [role="listbox"], [role="menu"] ul, [role="menu"] li) { background: var(--cw-dark-surface) !important; color: var(--cw-dark-ink) !important; border-color: var(--cw-dark-line) !important; }
 body.cw-canvas-dark :is([role^="menuitem"], [role="option"]) { background: var(--cw-dark-surface) !important; color: var(--cw-dark-ink) !important; }
 body.cw-canvas-dark :is([role^="menuitem"], [role="option"]) :is(span, svg) { background-color: transparent !important; color: inherit !important; }
