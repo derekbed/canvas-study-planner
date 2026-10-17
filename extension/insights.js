@@ -233,7 +233,7 @@
     const { backdrop, box } = settingsDialog(`${course.name} picture`, "cw-course-picture-title", "Close course picture settings");
     const details = node("div", undefined, "cw-appearance-course-controls");
     let pendingImageUrl = null, pendingFileName = "";
-    const status = node("p", "", "cw-appearance-status"); status.setAttribute("role", "status");
+    const status = node("p", "", "cw-appearance-status"); status.setAttribute("role", "status"); status.tabIndex = -1;
     const renderPicture = () => {
       details.replaceChildren();
       const previewUrl = pendingImageUrl === null ? coursePicture(courseId) : pendingImageUrl;
@@ -272,7 +272,7 @@
           }
           pendingImageUrl = null; pendingFileName = ""; render(); renderPicture(); status.textContent = saved ? "Saved to Coursewise." : "Saved in this browser.";
         } catch (error) { status.textContent = error.message; }
-        finally { controls.forEach(control => { control.disabled = false; }); if (backdrop.isConnected) details.querySelector('input[type="file"]')?.focus(); }
+        finally { controls.forEach(control => { control.disabled = false; }); if (backdrop.isConnected) status.focus(); }
       });
       details.append(save);
       upload.addEventListener("change", async () => {
@@ -298,7 +298,8 @@
     const popup = coursePicturePanel(courseId);
     if (!popup) return;
     document.body.append(popup); popup.showModal();
-    popup.querySelector('input[type="file"]')?.focus();
+    const title = popup.querySelector("#cw-course-picture-title");
+    if (title) { title.tabIndex = -1; title.focus(); }
   }
   globalThis.CoursewiseAppearance = { open: openAppearancePopup, paintCoursePicture };
   function maxRailWidth() {
