@@ -211,6 +211,13 @@ body.cw-canvas-themed .navigation-tray-container button {
 }
 body.cw-canvas-themed .navigation-tray-container button :is(span, svg, path) { color: var(--cw-canvas-ink) !important; }
 body.cw-canvas-themed .navigation-tray-container button :is(svg, path) { fill: currentColor !important; }
+body.cw-canvas-dark #help_tray [data-cid="Pill"] > div {
+  background: var(--cw-dark-raised) !important;
+  border-color: var(--cw-dark-accent) !important;
+}
+body.cw-canvas-dark #help_tray [data-cid="Pill"] [class*="pill__text"] {
+  color: var(--cw-dark-ink) !important;
+}
 body.cw-canvas-themed .navigation-tray-container :is(a, button):focus-visible {
   outline: 2px solid var(--cw-canvas-link) !important;
   outline-offset: 2px;
