@@ -1,0 +1,41 @@
+body.cw-canvas-themed {
+  --cw-canvas-border: color-mix(in srgb, var(--cw-canvas-ink) 40%, var(--cw-canvas-background));
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body#tinymce.cw-canvas-themed {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+}
+body.cw-canvas-themed :is(#content, #main, #quiz_show, .quiz_show, .quiz-student-details, .quiz_student_details) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed :is(h1, h2, h3, h4, p, li, strong) { color: var(--cw-canvas-ink) !important; }
+body.cw-canvas-themed a { color: var(--cw-canvas-link) !important; }
+body.cw-canvas-themed :is(hr, .quiz_student_details, .quiz_student_details li) { border-color: var(--cw-canvas-border) !important; }
+body.cw-canvas-themed :is([aria-label="Quiz header"], [aria-label="Quiz content"], [aria-label="Assessment results page"], [aria-label="Assessment instructions page"]) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed :is([aria-label="Quiz header"], [aria-label="Quiz content"]) > :is(div, section, article, header) {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+/* Results cards sit below transparent SDK wrappers in embedded quizzes too. */
+body.cw-canvas-themed [aria-label="Quiz content"] div:has([data-automation="sdk-result-list-title"]) {
+  background-color: var(--cw-canvas-background) !important;
+  color: var(--cw-canvas-ink) !important;
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed [aria-label="Quiz content"] :is(div, hr, [role="separator"]) {
+  border-color: var(--cw-canvas-border) !important;
+}
+body.cw-canvas-themed [aria-label="Quiz content"] :is(h1, h2, h3, h4, h5, h6, p, strong) { color: var(--cw-canvas-ink) !important; }
+body.cw-canvas-themed [aria-label="Quiz content"] :is(button, [role="button"]) {
+  background-color: var(--cw-nav-background) !important;
+  border-color: var(--cw-canvas-border) !important;
+  color: var(--cw-nav-ink) !important;
+}

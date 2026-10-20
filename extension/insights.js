@@ -846,36 +846,42 @@
     state.requested.clear(); state.errors.clear();
     render();
     try {
-      const rows = await apiPages("/api/v1/courses", [["include[]", "total_scores"], ["per_page", "100"]], 2);
+      const [rows, enrollments] = await Promise.all([
+        apiPages("/api/v1/courses", [["include[]", "total_scores"], ["per_page", "100"]], 2),
+        // Some schools block enrollment summaries; course data remains usable.
+        apiPages("/api/v1/users/self/enrollments", [["type[]", "StudentEnrollment"], ["per_page", "100"]], 2).catch(() => [])
+      ]);
       if (generation !== state.generation) return;
       for (const row of rows) {
         const course = model.courseFor(row);
         if (course) state.courses.set(course.id, course);
       }
-      try {
-        const enrollments = await apiPages("/api/v1/users/self/enrollments", [["type[]", "StudentEnrollment"], ["per_page", "100"]], 2);
-        if (generation !== state.generation) return;
-        for (const enrollment of enrollments) {
-          const id = model.courseId(enrollment?.course_id);
-          const course = state.courses.get(id);
-          if (course) state.courses.set(id, model.withEnrollmentGrade(course, enrollment));
-        }
-      } catch { /* Some schools block enrollment summaries. */ }
+      for (const enrollment of enrollments) {
+        const id = model.courseId(enrollment?.course_id);
+        const course = state.courses.get(id);
+        if (course) state.courses.set(id, model.withEnrollmentGrade(course, enrollment));
+      }
       if (current.type === "course" && !state.courses.has(current.id)) {
         try {
           const details = await apiOne("/api/v1/courses/" + current.id, [["include[]", "total_scores"]]);
+          if (generation !== state.generation) return;
           const course = model.courseFor(details);
           if (course) state.courses.set(course.id, course);
         } catch { /* The current course may not be available from the API. */ }
       }
+      if (generation !== state.generation) return;
       const ids = visibleIds(current);
       for (const id of ids) if (!state.courses.has(id)) state.courses.set(id, placeholder(id));
       await broker("syncCourses", { courses: [...state.courses.values()].map(course => ({ canvasId: course.id, name: course.name })) }).catch(() => {});
-      state.workspace = await broker("getWorkspace").catch(() => state.workspace);
+      if (generation !== state.generation) return;
+      const workspace = await broker("getWorkspace").catch(() => state.workspace);
+      if (generation !== state.generation) return;
+      state.workspace = workspace;
       render();
       for (let offset = 0; offset < ids.length; offset += 3) {
         await Promise.all(ids.slice(offset, offset + 3).map(id => loadCourseData(id, generation, false)));
-        if (generation === state.generation) render();
+        if (generation !== state.generation) return;
+        render();
       }
     } catch {
       if (generation === state.generation) state.errors.set("global", "Canvas could not load this overview. Check your Canvas sign-in, then refresh.");
@@ -969,6 +975,7 @@
           }
         } else old?.remove();
       }
+      card.dataset.cwReady = "";
     }
   }
   function itemsFor(kind, current, includeRead) {
@@ -1271,7 +1278,7 @@
     enhanceDashboardMenus();
     addCoursePictureMenuItem();
     if (state.railCollapsed) ensureReopenTab();
-    if (routeReady) { clearTimeout(timer); timer = setTimeout(onRoute, 250); }
+    if (routeReady && !timer) timer = setTimeout(() => { timer = null; onRoute(); }, 250);
   });
   async function initialize() {
     document.body.classList.add("cw-menu-ready");
@@ -1296,9 +1303,6 @@
       }
       if (changes.cwLocalSchools || changes.cwCourseAppearanceUpdated) {
         broker("getWorkspace").then(workspace => { state.workspace = workspace; render(); }).catch(() => {});
-      }
-      if (changes.cwCanvasCoursePictures) {
-        broker("getLocalCoursePictures").then(pictures => { state.localCoursePictures = pictures; render(); }).catch(() => {});
       }
       if (Number.isFinite(changes[HORIZONTAL_CARD_HEIGHT_KEY]?.newValue)) updateHorizontalCardHeight(changes[HORIZONTAL_CARD_HEIGHT_KEY].newValue);
       if (Number.isFinite(changes[CARD_SCALE_KEY]?.newValue)) updateCardScale(changes[CARD_SCALE_KEY].newValue);
@@ -1325,12 +1329,15 @@
     broker("getPreferences").then(preferences => {
       state.preferences = preferences; applyBackground(); syncAppearanceModeControls(); renderCards();
     }).catch(() => {});
-    broker("getWorkspace").then(workspace => { state.workspace = workspace; render(); }).catch(() => {});
-    broker("getLocalCoursePictures").then(pictures => { state.localCoursePictures = pictures; render(); }).catch(() => {});
+    const workspaceReady = broker("getWorkspace").then(workspace => { state.workspace = workspace; render(); }).catch(() => {});
     routeReady = true;
     window.addEventListener("popstate", onRoute);
     window.addEventListener("resize", applyRailSize);
     onRoute();
+    await workspaceReady;
+    render();
+    document.documentElement.classList.remove("cw-canvas-booting");
+    document.documentElement.removeAttribute("aria-busy");
   }
   let initialized = false;
   function startAfterConsent() {

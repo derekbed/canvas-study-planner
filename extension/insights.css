@@ -1,4 +1,7 @@
 /* Coursewise's Canvas layer is intentionally scoped to cw- classes. */
+html:not(.cw-canvas-failed) body.cw-organizer-dashboard :is(.ic-DashboardCard, .DashboardCard, [data-testid="course-card"]):not([data-cw-ready]) {
+  visibility: hidden !important;
+}
 .cw-card-grade,.cw-card-due,.cw-hub{box-sizing:border-box}
 .cw-card-grade{position:absolute;z-index:3;top:10px;left:10px;display:inline-flex;align-items:center;max-width:calc(100% - 20px);padding:6px 9px;background:#fff;border:1px solid #d9e7ef;border-radius:999px;box-shadow:0 3px 10px #17304724;color:#095b58;font-size:12px;font-weight:750;line-height:1.1;pointer-events:none}
 .cw-card-grade[data-state="unavailable"]{color:#566b78}
@@ -200,6 +203,7 @@ body.cw-organizer-dashboard.cw-organizer-collapsed #right-side-wrapper{display:n
 body.cw-organizer-dashboard{--cw-content-gutter-left:48px;--cw-content-gutter-right:8px}
 body.cw-organizer-dashboard #dashboard_header_container{top:0!important;margin-left:calc(-1 * var(--cw-content-gutter-left))!important;margin-right:calc(-1 * var(--cw-content-gutter-right))!important;padding-left:var(--cw-content-gutter-left)!important;padding-right:var(--cw-content-gutter-right)!important;background:var(--cw-canvas-background,#fff)!important}
 body.cw-organizer-dashboard #dashboard_header_container .ic-Dashboard-header__layout{border-bottom:0!important}
+body.cw-organizer-dashboard #dashboard_header_container #DashboardOptionsMenu_Container{position:absolute;top:50%;right:24px;transform:translateY(-50%)}
 /* With the sidebar open, also extend the header over the sidebar column, and
    start the sidebar level with the first row of cards so the header never hides it. */
 body.cw-organizer-dashboard:not(.cw-organizer-collapsed){--cw-header-extend-right:calc(var(--cw-content-gutter-right) + var(--cw-rail-width,320px) + 28px)}

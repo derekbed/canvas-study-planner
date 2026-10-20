@@ -1,0 +1,6 @@
+/* The root is themed before the body exists; never paint a placeholder color. */
+html.cw-canvas-themed,
+html.cw-canvas-themed body {
+  background-color: var(--cw-canvas-background) !important;
+  background-image: none !important;
+}

@@ -132,3 +132,50 @@ test('Canvas sync keeps identical school course IDs isolated per student',async(
  globalThis.fetch=async url=>{const p=new URL(url).pathname;if(p.endsWith('/courses'))return Response.json([{id:1,name:'Biology',course_code:'BIO',enrollments:[{grades:{current_score:91}}]}]);if(p.endsWith('/assignment_groups'))return Response.json([{id:7,name:'Homework',group_weight:100}]);if(p.endsWith('/assignments'))return Response.json([{id:9,name:'Lab report',description:'Write your findings.',due_at:'2026-10-10T12:00:00Z',html_url:'https://school.instructure.com/courses/1/assignments/9',points_possible:100,assignment_group_id:7}]);return Response.json([{id:9,title:'Office hours',start_at:'2026-10-09T12:00:00Z',context_code:'course_1'}]);};
  try{await canvas.syncCanvas('canvas-a');await canvas.syncCanvas('canvas-b');await canvas.syncCanvas('canvas-a');const a=sql.prepare("SELECT * FROM courses WHERE user_id='canvas-a'").get(),b=sql.prepare("SELECT * FROM courses WHERE user_id='canvas-b'").get();assert.notEqual(a.id,b.id);assert.equal(a.current_grade,91);assert.equal(sql.prepare("SELECT count(*) AS n FROM events WHERE user_id='canvas-a'").get().n,2);assert.equal(sql.prepare("SELECT description FROM events WHERE user_id='canvas-a' AND kind='assignment'").get().description,'Write your findings.');assert.equal(sql.prepare("SELECT course_id FROM events WHERE user_id='canvas-b' AND kind='event'").get().course_id,b.id);}finally{globalThis.fetch=oldFetch;delete env.TOKEN_ENCRYPTION_KEY;}
 });
+
+test('plan saves batch ownership checks and reject foreign records before replacing a plan', async () => {
+ const user='plan-owner';
+ let data=await mutate('course:create',{name:'Planning'},user);
+ const courseId=data.courses[0].id;
+ data=await mutate('event:create',{title:'Essay',courseId,dueAt:'2026-11-01T12:00:00Z'},user);
+ const eventId=data.events[0].id;
+ const blocks=Array.from({length:250},(_,index)=>({courseId,eventId,startsAt:new Date(Date.UTC(2026,9,20,0,index*30)).toISOString(),minutes:25}));
+ const prepare=db.prepare;
+ let ownershipQueries=0;
+ db.prepare=function(query){if(/^SELECT id FROM (courses|events) WHERE user_id=\?$/.test(query))ownershipQueries++;return prepare.call(this,query);};
+ try {
+  data=await mutate('plan:save',{blocks},user);
+  assert.equal(data.blocks.length,250);
+  assert.equal(ownershipQueries,2);
+ } finally {db.prepare=prepare;}
+ const before=data.blocks.map(block=>block.id).sort();
+ const forbidden=await api.POST(req({action:'plan:save',blocks:[{...blocks[0],courseId:'someone-elses-course'}]},user));
+ assert.equal(forbidden.status,400);
+ const after=await(await api.GET(new Request('https://test.example/api/workspace',{headers:{'oai-authenticated-user-id':user}}))).json();
+ assert.deepEqual(after.blocks.map(block=>block.id).sort(),before);
+});
+
+test('calendar groups local days and ranking preserves input and priority order', () => {
+ const {eventsByDay,localDateKey,rankEvents}=load('lib/workspace-selectors.ts');
+ const time=Date.parse('2026-10-19T12:00:00Z');
+ const base={course_id:null,title:'Work',status:'upcoming',estimated_minutes:60,points_possible:10,points_earned:null,grade_group:''};
+ const events=[{...base,id:'later',due_at:'2026-10-22T12:00:00Z'},{...base,id:'overdue',due_at:'2026-10-18T12:00:00Z'},{...base,id:'same-day',due_at:'2026-10-22T12:30:00Z'}];
+ const original=events.map(event=>event.id);
+ const grouped=eventsByDay(events);
+ assert.deepEqual(grouped.get(localDateKey(new Date(events[0].due_at))).map(event=>event.id),['later','same-day']);
+ assert.equal(rankEvents(events,new Map(),time)[0].id,'overdue');
+ assert.deepEqual(events.map(event=>event.id),original);
+ const local=new Date(2026,9,19,23,30);
+ assert.equal(localDateKey(local),'2026-9-19');
+});
+
+test('client requests preserve readable failures when a proxy returns non-JSON', async () => {
+ const {requestJson}=load('lib/request.ts');
+ const original=globalThis.fetch;
+ try {
+  globalThis.fetch=async()=>new Response('<html>Unavailable</html>',{status:503});
+  await assert.rejects(requestJson('/api/workspace','Workspace unavailable.'),{message:'Workspace unavailable.'});
+  globalThis.fetch=async()=>Response.json({error:'Sign in first.'},{status:401});
+  await assert.rejects(requestJson('/api/workspace','Workspace unavailable.'),{message:'Sign in first.'});
+ } finally {globalThis.fetch=original;}
+});
