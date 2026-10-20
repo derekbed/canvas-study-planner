@@ -14,7 +14,7 @@
     if (!root.classList.contains("cw-canvas-booting")) return;
     root.classList.add("cw-canvas-failed");
     reveal();
-  }, 8000);
+  }, 2000);
 
   const cached = palette.cachedPreferences();
   if (cached) palette.applyPreferences(cached);

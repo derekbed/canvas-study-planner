@@ -31,14 +31,14 @@ function element() {
 function page({ preferences, storage = new Map(), systemDark = false, blocked = false, frames = [] } = {}) {
   if (preferences) storage.set(cacheKey, JSON.stringify(preferences));
   const document = { body: null, documentElement: element(), querySelectorAll(selector) { return selector === "iframe" ? frames : []; } };
-  let changed, resolveStorage, rejectStorage, fallback;
+  let changed, resolveStorage, rejectStorage, fallback, fallbackDelay;
   const stored = new Promise((resolve, reject) => { resolveStorage = resolve; rejectStorage = reject; });
   const context = vm.createContext({
     document,
     location: { href: "https://canvas.upenn.edu/courses/123", origin: "https://canvas.upenn.edu" },
     URL,
     MutationObserver: class { constructor(fn) { changed = fn; } observe() {} },
-    setTimeout(callback) { fallback = callback; },
+    setTimeout(callback, delay) { fallback = callback; fallbackDelay = delay; },
     matchMedia() { return { matches: systemDark }; },
     localStorage: {
       getItem(key) { if (blocked) throw new Error("Blocked"); return storage.get(key) || null; },
@@ -53,7 +53,8 @@ function page({ preferences, storage = new Map(), systemDark = false, blocked = 
     document, storage, palette: context.CoursewiseCanvasPalette, resolveStorage, rejectStorage,
     color() { return document.documentElement.properties.get("--cw-canvas-background"); },
     insertBody() { document.body = element(); changed?.(); },
-    failOpen() { fallback(); }
+    failOpen() { fallback(); },
+    failOpenDelay() { return fallbackDelay; }
   };
 }
 
@@ -61,6 +62,7 @@ test("the first paint covers native Canvas until the organizer is ready", async 
   const view = page({ preferences: { canvasBackground: "#ffedf2", canvasThemeMode: "light" } });
   assert.equal(view.document.documentElement.classes.has("cw-canvas-booting"), true);
   assert.equal(view.document.documentElement.attributes.get("aria-busy"), "true");
+  assert.equal(view.failOpenDelay(), 2000);
   assert.match(bootstrapCss, /html\.cw-canvas-booting body\s*\{\s*visibility: hidden !important/);
   assert.match(bootstrapCss, /html\.cw-canvas-booting::after[\s\S]*background: var\(--cw-canvas-background/);
   assert.match(insightsCss, /body\.cw-organizer-dashboard :is\([^}]+:not\(\[data-cw-ready\]\)[\s\S]*visibility: hidden !important/);
