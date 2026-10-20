@@ -13,7 +13,7 @@ test("local release supports user-granted school origins without website or AI c
       "--out", out], { encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
     const manifest = JSON.parse(readFileSync(join(out, "manifest.json"), "utf8"));
-    assert.equal(manifest.version, "0.1.7");
+    assert.equal(manifest.version, "0.1.8");
     assert.deepEqual(manifest.host_permissions, ["https://raw.githubusercontent.com/*"]);
     assert.deepEqual(manifest.optional_host_permissions, ["https://*/*"]);
     assert.deepEqual(manifest.permissions, ["sidePanel", "storage", "scripting", "alarms"]);

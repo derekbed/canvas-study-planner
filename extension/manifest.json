@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Coursewise for Canvas",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Customize Canvas and view local course deadlines, grades, and announcements.",
   "icons": {
     "16": "icon16.png",
