@@ -11,7 +11,7 @@
     requested: new Set(), errors: new Map(), loading: false, generation: 0,
     active: "assignment", expanded: new Set(),
     read: new Set(), showRead: false, lastHidden: null, storageError: false,
-    preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, ...palette.cachedPreferences() }, workspace: null, localCoursePictures: {}, railWidth: 320, railCollapsed: false, courseExpanded: false, horizontalView: false, horizontalCardHeight: 160, cardScale: 100
+    preferences: { canvasBackground: "#f7faf9", canvasThemeMode: "light", deadlineWindowDays: 14, ...palette.cachedPreferences() }, workspace: null, railWidth: 320, railCollapsed: false, courseExpanded: false, horizontalView: false, horizontalCardHeight: 160, cardScale: 100
   };
   const READ_KEY = "cwReadAssignmentsV1:" + location.origin;
   const RAIL_WIDTH_KEY = "cwRailWidthV2";
@@ -259,18 +259,12 @@
         const controls = [...box.querySelectorAll("input,button:not(.cw-appearance-close)")]; controls.forEach(control => { control.disabled = true; });
         status.textContent = "Saving…";
         try {
-          if (saved) {
-            const color = ["blue", "lavender", "peach", "mint", "butter", "rose", "sky", "teal", "violet", "orange"].includes(saved.color) ? saved.color : "blue";
-            const updated = await broker("styleCourse", { courseId: saved.id, color, imageUrl: pendingImageUrl });
-            saved.image_url = updated.imageUrl;
-            delete state.localCoursePictures[String(courseId)];
-            broker("styleLocalCoursePicture", { canvasId: courseId, imageUrl: "" }).catch(() => {});
-          } else {
-            await broker("styleLocalCoursePicture", { canvasId: courseId, imageUrl: pendingImageUrl });
-            if (pendingImageUrl) state.localCoursePictures[String(courseId)] = pendingImageUrl;
-            else delete state.localCoursePictures[String(courseId)];
-          }
-          pendingImageUrl = null; pendingFileName = ""; render(); renderPicture(); status.textContent = saved ? "Saved to Coursewise." : "Saved in this browser.";
+          const current = savedCourse(courseId);
+          const color = ["blue", "lavender", "peach", "mint", "butter", "rose", "sky", "teal", "violet", "orange"].includes(current?.color) ? current.color : "blue";
+          const updated = await broker("styleCourse", { courseId, color, imageUrl: pendingImageUrl });
+          if (current) current.image_url = updated.imageUrl;
+          else state.workspace = await broker("getWorkspace");
+          pendingImageUrl = null; pendingFileName = ""; render(); renderPicture(); status.textContent = "Saved to Coursewise.";
         } catch (error) { status.textContent = error.message; }
         finally { controls.forEach(control => { control.disabled = false; }); if (backdrop.isConnected) status.focus(); }
       });
@@ -790,7 +784,7 @@
     return state.workspace?.courses?.find(course => String(course.canvas_id) === String(id));
   }
   function coursePicture(id) {
-    return savedCourse(id)?.image_url || state.localCoursePictures[String(id)] || "";
+    return savedCourse(id)?.image_url || "";
   }
   function paintCoursePicture(card, imageUrl) {
     const hero = card.querySelector(".ic-DashboardCard__header_hero");

@@ -76,8 +76,20 @@ export function useWorkspace() {
       "Eligibility could not be saved.",
       jsonBody({ atLeast13: true }),
     );
-    await initialize();
-  }, [initialize]);
+    setEligible(true);
+    setLoading(true);
+    setError(null);
+    try {
+      await reload();
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Workspace could not load.",
+      );
+      throw cause;
+    } finally {
+      setLoading(false);
+    }
+  }, [reload]);
 
   const mutate = useCallback(
     async (action: string, payload: Record<string, unknown>) => {

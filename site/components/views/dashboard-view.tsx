@@ -14,8 +14,8 @@ export default function DashboardView({
   now: number;
   onEvent: (id: string) => void;
 }) {
-  const [progress, setProgress] = useState(false),
-    week = now + 7 * 86400000;
+  const [progress, setProgress] = useState(false);
+  const week = now + 7 * 86_400_000;
   const courses = useMemo(
     () => new Map(data.courses.map((course) => [course.id, course])),
     [data.courses],

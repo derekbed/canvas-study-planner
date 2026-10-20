@@ -32,13 +32,15 @@ export function WorkspaceLoading() {
 export function WorkspaceError({
   message,
   onRetry,
+  title = "Workspace unavailable",
 }: {
   message: string;
   onRetry: () => void;
+  title?: string;
 }) {
   return (
     <div className="error-state" role="alert">
-      <h2>Workspace unavailable</h2>
+      <h2>{title}</h2>
       <p>{message}</p>
       <Button onClick={onRetry}>Try again</Button>
     </div>
@@ -59,6 +61,7 @@ export class ViewBoundary extends Component<
     if (this.state.failed) {
       return (
         <WorkspaceError
+          title="View unavailable"
           message="This view could not open. Reload the page to try again."
           onRetry={() => window.location.reload()}
         />
