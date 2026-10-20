@@ -5,15 +5,21 @@ import vm from "node:vm";
 
 const paletteCode = readFileSync(new URL("../palette.js", import.meta.url), "utf8");
 const bootstrapCode = readFileSync(new URL("../theme-bootstrap.js", import.meta.url), "utf8");
+const bootstrapCss = readFileSync(new URL("../theme-bootstrap.css", import.meta.url), "utf8");
+const insightsCss = readFileSync(new URL("../insights.css", import.meta.url), "utf8");
 const cacheKey = "cwCanvasThemeV1:test-extension";
 function element() {
   const classes = new Set();
   const properties = new Map();
+  const attributes = new Map();
   return {
-    classes, properties,
+    classes, properties, attributes,
+    setAttribute(name, value) { attributes.set(name, value); },
+    removeAttribute(name) { attributes.delete(name); },
     classList: {
       add(...names) { names.forEach(name => classes.add(name)); },
       remove(...names) { names.forEach(name => classes.delete(name)); },
+      contains(name) { return classes.has(name); },
       toggle(name, on) { if (on) classes.add(name); else classes.delete(name); }
     },
     style: {
@@ -25,13 +31,14 @@ function element() {
 function page({ preferences, storage = new Map(), systemDark = false, blocked = false, frames = [] } = {}) {
   if (preferences) storage.set(cacheKey, JSON.stringify(preferences));
   const document = { body: null, documentElement: element(), querySelectorAll(selector) { return selector === "iframe" ? frames : []; } };
-  let changed, resolveStorage, rejectStorage;
+  let changed, resolveStorage, rejectStorage, fallback, fallbackDelay;
   const stored = new Promise((resolve, reject) => { resolveStorage = resolve; rejectStorage = reject; });
   const context = vm.createContext({
     document,
     location: { href: "https://canvas.upenn.edu/courses/123", origin: "https://canvas.upenn.edu" },
     URL,
     MutationObserver: class { constructor(fn) { changed = fn; } observe() {} },
+    setTimeout(callback, delay) { fallback = callback; fallbackDelay = delay; },
     matchMedia() { return { matches: systemDark }; },
     localStorage: {
       getItem(key) { if (blocked) throw new Error("Blocked"); return storage.get(key) || null; },
@@ -45,9 +52,28 @@ function page({ preferences, storage = new Map(), systemDark = false, blocked = 
   return {
     document, storage, palette: context.CoursewiseCanvasPalette, resolveStorage, rejectStorage,
     color() { return document.documentElement.properties.get("--cw-canvas-background"); },
-    insertBody() { document.body = element(); changed?.(); }
+    insertBody() { document.body = element(); changed?.(); },
+    failOpen() { fallback(); },
+    failOpenDelay() { return fallbackDelay; }
   };
 }
+
+test("the first paint covers native Canvas until the organizer is ready", async () => {
+  const view = page({ preferences: { canvasBackground: "#ffedf2", canvasThemeMode: "light" } });
+  assert.equal(view.document.documentElement.classes.has("cw-canvas-booting"), true);
+  assert.equal(view.document.documentElement.attributes.get("aria-busy"), "true");
+  assert.equal(view.failOpenDelay(), 2000);
+  assert.match(bootstrapCss, /html\.cw-canvas-booting body\s*\{\s*visibility: hidden !important/);
+  assert.match(bootstrapCss, /html\.cw-canvas-booting::after[\s\S]*background: var\(--cw-canvas-background/);
+  assert.match(insightsCss, /body\.cw-organizer-dashboard :is\([^}]+:not\(\[data-cw-ready\]\)[\s\S]*visibility: hidden !important/);
+  view.resolveStorage({ cwDataConsent: true, cwCanvasPreferences: { canvasBackground: "#ffedf2", canvasThemeMode: "light" } });
+  await Promise.resolve();
+  assert.equal(view.document.documentElement.classes.has("cw-canvas-booting"), true);
+  view.failOpen();
+  assert.equal(view.document.documentElement.classes.has("cw-canvas-booting"), false);
+  assert.equal(view.document.documentElement.classes.has("cw-canvas-failed"), true);
+  assert.equal(view.document.documentElement.attributes.has("aria-busy"), false);
+});
 
 for (const [color, expected] of [["#f7faf9", "#f2f9f6"], ["#ffedf2", "#ffedf2"], ["#e9f8ef", "#e9f8ef"], ["#293b48", "#293b48"]]) {
   test(`saved light color ${color} paints before asynchronous storage, body, or idle scripts`, () => {
@@ -125,11 +151,11 @@ test("slow or failed extension storage keeps the exact cached color", async () =
   assert.equal(view.color(), "#ffedf2");
 });
 
-test("first use and blocked site storage never substitute an arbitrary cover color", async () => {
+test("first use and blocked site storage keep Canvas covered while appearance loads", async () => {
   for (const blocked of [false, true]) {
     const view = page({ blocked });
     assert.equal(view.color(), undefined);
-    assert.equal(view.document.documentElement.classes.size, 0);
+    assert.deepEqual([...view.document.documentElement.classes], ["cw-canvas-booting"]);
     view.resolveStorage({ cwDataConsent: true, cwCanvasPreferences: { canvasBackground: "#ffedf2", canvasThemeMode: "light" } });
     await Promise.resolve();
     assert.equal(view.color(), "#ffedf2");
@@ -144,6 +170,7 @@ test("invalid cached data is ignored and revoked consent clears the cached theme
   view.resolveStorage({ cwDataConsent: false });
   await Promise.resolve();
   assert.equal(view.storage.has(cacheKey), false);
+  assert.equal(view.document.documentElement.classes.has("cw-canvas-booting"), false);
   assert.equal(view.document.body.classes.has("cw-canvas-themed"), false);
   assert.equal(view.document.documentElement.classes.has("cw-canvas-themed"), false);
 });

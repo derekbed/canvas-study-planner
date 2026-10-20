@@ -130,6 +130,10 @@ body.cw-canvas-dark :is(.ic-DashboardCard, .ic-DashboardCard__header_content, .i
   border-color: var(--cw-dark-line) !important;
 }
 body.cw-canvas-dark :is(.ic-DashboardCard__header-title, .ic-DashboardCard__header-subtitle, .ic-DashboardCard__header-term, .ic-DashboardCard__action, .ic-DashboardCard__action svg) { color: var(--cw-dark-ink) !important; }
+/* Feature Flags uses InstUI disclosure buttons instead of the legacy .ic-Table controls. */
+body.cw-canvas-dark #content [data-testid="ff-table-row"] [data-cid="ToggleDetails"] :is(button, span, svg) {
+  color: var(--cw-dark-ink) !important;
+}
 body.cw-canvas-dark :is(.ic-Dashboard-header, #breadcrumbs, #footer, #section-tabs li, hr) { border-color: var(--cw-dark-line) !important; }
 body.cw-canvas-dark :is(.Button, .btn, .ui-button) { background: var(--cw-dark-raised) !important; color: var(--cw-dark-ink) !important; border-color: var(--cw-dark-line) !important; text-shadow: none; }
 body.cw-canvas-dark :is(.Button--primary, .btn-primary) { background: #23655e !important; color: #fff !important; }
@@ -153,6 +157,9 @@ body.cw-canvas-dark #content [data-testid="tool-bar"] button:not(:disabled):is(:
 body.cw-canvas-dark #content [data-testid="tool-bar"] button :is(svg, path) {
   color: inherit !important;
   fill: currentColor !important;
+}
+body.cw-canvas-dark #content [data-testid="list-items-desktop"] div:has(> [data-testid="conversation"]):has([data-testid="conversationListItem-Checkbox"]:checked) {
+  background-color: color-mix(in srgb, var(--cw-dark-accent) 10%, var(--cw-dark-raised)) !important;
 }
 body.cw-canvas-dark #content input[data-testid="conversationListItem-Checkbox"] + label [class*="checkboxFacade__facade"] {
   background: var(--cw-dark-raised) !important;
@@ -234,6 +241,7 @@ body.cw-canvas-dark :is(.cw-hub, .cw-appearance-dialog) {
   --cw-dialog-field: var(--cw-dark-raised);
 }
 body.cw-canvas-dark .cw-hub { background: var(--cw-dark-surface); border-color: var(--cw-dark-line); }
+body.cw-canvas-dark .cw-hub__spaces { background: transparent !important; }
 body.cw-canvas-dark :is(.cw-hub__panel, .cw-hub__item, .cw-hub__empty, .cw-hub__sort, .cw-hub__course-links, .cw-hub__more, .cw-hub__read-toggle) { background: var(--cw-dark-surface); color: var(--cw-dark-ink); border-color: var(--cw-dark-line); }
 body.cw-canvas-dark :is(.cw-hub__space, .cw-hub__date, .cw-hub__status, .cw-hub__undo, .cw-hub__check, .cw-card-due, .cw-card-grade) { background: var(--cw-dark-raised); color: var(--cw-dark-ink); border-color: var(--cw-dark-line); }
 body.cw-canvas-dark .cw-hub__space[aria-selected="true"] { border-color: var(--cw-dark-accent); box-shadow: 0 0 0 1px var(--cw-dark-accent); }
@@ -569,6 +577,10 @@ body.cw-canvas-themed :is(#calendar-app, #minical, .mini_calendar, .mini-calenda
   border-color: var(--cw-calendar-grid-border) !important;
 }
 body.cw-canvas-themed .fc .fc-day.fc-today { background-color: color-mix(in srgb, var(--cw-nav-background) 25%, var(--cw-canvas-surface)) !important; }
+body.cw-canvas-themed.cw-canvas-dark .fc .fc-day.fc-today {
+  background-color: color-mix(in srgb, var(--cw-dark-accent) 18%, var(--cw-canvas-surface)) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cw-dark-accent) 45%, var(--cw-canvas-surface));
+}
 /* FullCalendar overlays date labels and events on the day cells; let today's fill show through. */
 body.cw-canvas-themed .fc .fc-content-skeleton td { background-color: transparent !important; }
 body.cw-canvas-themed .fc :is(.fc-day-number, .fc-day-header, .fc-toolbar h2) { color: var(--cw-surface-ink) !important; }
@@ -771,7 +783,7 @@ body.cw-canvas-themed [role="menu"][aria-label="Dashboard Card Movement Menu"]:h
   outline: none !important;
 }
 body.cw-canvas-themed :is(.css-1deiz5f-view-tabs__container, [class*="view-tabs__container"]),
-body.cw-canvas-themed [role="tablist"],
+body.cw-canvas-themed [role="tablist"]:not(.cw-hub__spaces),
 body.cw-canvas-themed :is([role="tabpanel"], [class*="tabs__panelsContainer"] > [class*="-panel"]) {
   background: var(--cw-dashboard-menu-surface) !important;
   color: var(--cw-canvas-ink) !important;
@@ -858,4 +870,94 @@ body.cw-canvas-themed:not(.cw-canvas-dark) .cw-hub__space[aria-selected="true"] 
 body.cw-canvas-themed:not(.cw-canvas-dark) .cw-hub__progress:before { background: var(--cw-hub-surface) !important; }
 body.cw-canvas-themed:not(.cw-canvas-dark) :is(.cw-hub__more, .cw-hub__read-toggle, .cw-hub__check, .cw-hub__course-toggle, .cw-hub__course-refresh, .cw-rail-collapse, .cw-rail-reopen):is(:hover, :focus-visible) {
   background: var(--cw-hub-hover) !important;
+}
+
+body.cw-canvas-dark :is(#content, #right-side) table:not(.profile_table) {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark :is(#content, #right-side) table:not(.profile_table) :is(th, td) {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark #content table:has(th button[aria-label^="Sort by Feature"]) td:nth-child(-n + 2) :is(button, button span) {
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark #content .profile_pic_link { background-color: var(--cw-canvas-background) !important; }
+body.cw-canvas-dark #content [role="tabpanel"]:has(.account_notification) {
+  background: var(--cw-canvas-background) !important;
+}
+body.cw-canvas-dark #content [class*="view-panel__content"]:has(.account_notification) {
+  background: var(--cw-canvas-background) !important;
+}
+body.cw-canvas-dark #content .account_notification .ic-notification__content {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark #content .account_notification :is(.ic-notification__title, .ic-notification__message) {
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark #content [class*="view-alert"] {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-dark-line) !important;
+  box-shadow: none !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark #content [class*="view-alert"] > :nth-child(2) {
+  background: var(--cw-canvas-background) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark #content [class*="view-alert"] > :nth-child(2) :not(a) {
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark #content [class*="view-alert"] button {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark #content [class*="view-alert"] button :is(span, svg) {
+  color: var(--cw-dark-ink) !important;
+  fill: currentColor !important;
+}
+body.cw-canvas-dark #content [class*="formFieldLayout__label"] {
+  color: var(--cw-dark-muted) !important;
+}
+body.cw-canvas-dark [role="listbox"][id^="Selectable"] :is([role="group"], [data-cid="Options.Item"]) {
+  background: var(--cw-dark-surface) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark [role="listbox"][id^="Selectable"] [class*="options__label"] {
+  background: var(--cw-dark-raised) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark [role="listbox"][id^="Selectable"] [class*="separator"] {
+  background: var(--cw-dark-line) !important;
+}
+body.cw-canvas-dark [class*="mask"] { background: rgb(0 0 0 / 68%) !important; }
+body.cw-canvas-dark [role="dialog"] {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark [role="dialog"] :is([class*="modalHeader"], [class*="modalFooter"]) {
+  background: var(--cw-canvas-background) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark [role="dialog"] :is(h1, h2, h3, p, label, [class*="modalBody"]) {
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark [role="dialog"] [data-testid="qr-cancel-button"] [class*="baseButton__content"] {
+  background: var(--cw-dark-raised) !important;
+  border-color: var(--cw-dark-line) !important;
+  color: var(--cw-dark-ink) !important;
+}
+body.cw-canvas-dark [role="dialog"] [data-testid="qr-proceed-button"] [class*="baseButton__content"] {
+  background: #23655e !important;
+  border-color: var(--cw-dark-accent) !important;
+  color: #fff !important;
 }

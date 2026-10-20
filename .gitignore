@@ -2,4 +2,7 @@
 .DS_Store
 extension/release/
 extension/local-release/
+extension/store-release/
+extension/coursewise-for-canvas-*.zip
+extension/coursewise-local-testing-*.zip
 extension/coursewise-local-store.zip
