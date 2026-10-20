@@ -8,6 +8,10 @@
 ## Verification
 
 - `git diff --check` passes
+- `node --test extension/tests/*.test.mjs` passes (43 tests)
+- `node --test site/scripts/roadmap.test.mjs` passes (15 tests)
+- `pnpm build` passes in `site/`
+- `pnpm lint` reports 8 existing errors and 4 warnings in files and lines unchanged from `main`
 
 ## Notes
 
