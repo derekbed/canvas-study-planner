@@ -130,6 +130,10 @@ body.cw-canvas-dark :is(.ic-DashboardCard, .ic-DashboardCard__header_content, .i
   border-color: var(--cw-dark-line) !important;
 }
 body.cw-canvas-dark :is(.ic-DashboardCard__header-title, .ic-DashboardCard__header-subtitle, .ic-DashboardCard__header-term, .ic-DashboardCard__action, .ic-DashboardCard__action svg) { color: var(--cw-dark-ink) !important; }
+/* Feature Flags uses InstUI disclosure buttons instead of the legacy .ic-Table controls. */
+body.cw-canvas-dark #content [data-testid="ff-table-row"] [data-cid="ToggleDetails"] :is(button, span, svg) {
+  color: var(--cw-dark-ink) !important;
+}
 body.cw-canvas-dark :is(.ic-Dashboard-header, #breadcrumbs, #footer, #section-tabs li, hr) { border-color: var(--cw-dark-line) !important; }
 body.cw-canvas-dark :is(.Button, .btn, .ui-button) { background: var(--cw-dark-raised) !important; color: var(--cw-dark-ink) !important; border-color: var(--cw-dark-line) !important; text-shadow: none; }
 body.cw-canvas-dark :is(.Button--primary, .btn-primary) { background: #23655e !important; color: #fff !important; }
